@@ -1,0 +1,90 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Build requirements:
+      * A Valheim install with BepInEx 5 already set up.
+      * The game path, in order of precedence:
+          - ValheimPath property in Local.props next to this file (git-ignored), e.g.
+              <Project><PropertyGroup>
+                <ValheimPath>D:\Steam\steamapps\common\Valheim</ValheimPath>
+              </PropertyGroup></Project>
+          - VALHEIM_INSTALL environment variable
+          - default Steam location on Windows
+      * Set CopyToGame=true (Local.props or -p:CopyToGame=true) to copy the build into
+        BepInEx/plugins/AdvancedPlanting after every build.
+    Game and Unity assemblies are referenced straight from the install so the mod always
+    compiles against the exact version you play. Private members of assembly_valheim are
+    exposed through BepInEx.AssemblyPublicizer at build time.
+  -->
+
+  <Import Project="Local.props" Condition="Exists('Local.props')" />
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>AdvancedPlanting</AssemblyName>
+    <RootNamespace>AdvancedPlanting</RootNamespace>
+    <Version>0.1.0</Version>
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ValheimPath Condition="'$(ValheimPath)' == ''">$(VALHEIM_INSTALL)</ValheimPath>
+    <ValheimPath Condition="'$(ValheimPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Valheim</ValheimPath>
+    <ManagedPath>$(ValheimPath)/valheim_Data/Managed</ManagedPath>
+    <BepInExCorePath>$(ValheimPath)/BepInEx/core</BepInExCorePath>
+    <PluginOutputPath>$(ValheimPath)/BepInEx/plugins/AdvancedPlanting</PluginOutputPath>
+    <CopyToGame Condition="'$(CopyToGame)' == ''">false</CopyToGame>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="assembly_valheim" Publicize="true" Private="false">
+      <HintPath>$(ManagedPath)/assembly_valheim.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_utils" Publicize="true" Private="false">
+      <HintPath>$(ManagedPath)/assembly_utils.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine" Private="false">
+      <HintPath>$(ManagedPath)/UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule" Private="false">
+      <HintPath>$(ManagedPath)/UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule" Private="false">
+      <HintPath>$(ManagedPath)/UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule" Private="false">
+      <HintPath>$(ManagedPath)/UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule" Private="false">
+      <HintPath>$(ManagedPath)/UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx" Private="false">
+      <HintPath>$(BepInExCorePath)/BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="0Harmony" Private="false">
+      <HintPath>$(BepInExCorePath)/0Harmony.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../AdvancedPlanting.Core/AdvancedPlanting.Core.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyToGameFolder" AfterTargets="Build" Condition="'$(CopyToGame)' == 'true'">
+    <MakeDir Directories="$(PluginOutputPath)" />
+    <Copy SourceFiles="$(OutDir)AdvancedPlanting.dll;$(OutDir)AdvancedPlanting.Core.dll" DestinationFolder="$(PluginOutputPath)" />
+    <Message Importance="high" Text="AdvancedPlanting copied to $(PluginOutputPath)" />
+  </Target>
+
+</Project>

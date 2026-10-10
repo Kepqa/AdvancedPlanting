@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.3
+
+- Declared incompatible with other planting mods: BepInEx skips AdvancedPlanting when one is installed and logs the reason.
+
 ## 0.4.2
 
 - Shorter README and package description; credits: by kepqa, made with Claude Code.

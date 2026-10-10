@@ -13,6 +13,7 @@ Plant along lines, arcs, circles, curves and filled shapes.
 - Vanilla costs: seeds, stamina, durability, skill.
 - Partial planting when stamina runs out; optional auto-continue.
 - Client-side only.
+- Incompatible with other planting mods.
 
 ## Controls
 

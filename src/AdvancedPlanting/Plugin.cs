@@ -10,11 +10,13 @@ using UnityEngine;
 namespace AdvancedPlanting
 {
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+    // Planting mods that handle the same placement click; BepInEx skips this plugin and logs why.
+    [BepInIncompatibility("advize.PlantEasily")]
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string PluginGuid = "kepqa.AdvancedPlanting";
         public const string PluginName = "AdvancedPlanting";
-        public const string PluginVersion = "0.4.2";
+        public const string PluginVersion = "0.4.3";
         public const string PluginAuthor = "kepqa";
 
         public static Plugin Instance { get; private set; }

@@ -5,6 +5,7 @@
 - New setting StaminaCostFactor: stamina per plant in figure mode, default 0.5 (half of vanilla).
 - MaxPlants default raised from 300 to 500. Existing config files keep their value.
 - README lists both settings.
+- Planting works with mods that take seeds from nearby containers: seeds are checked and taken through the game's own requirement calls, and the mod pays for every plant of a figure itself.
 
 ## 0.4.5
 

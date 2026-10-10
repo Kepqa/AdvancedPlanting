@@ -480,9 +480,8 @@ namespace AdvancedPlanting
         /// Called by the TryPlacePiece prefix. Returns true when the figure was handled here and
         /// the vanilla single placement must be skipped.
         /// </summary>
-        public bool TryPlantFigure(Player player, Piece piece, out bool placedAny)
+        public bool TryPlantFigure(Player player, Piece piece)
         {
-            placedAny = false;
             if (!FigureModeActive || player != _player || piece == null || !State.Finished) return false;
             if (piece.GetComponent<Plant>() == null) return false;
 
@@ -494,8 +493,7 @@ namespace AdvancedPlanting
                 return true;
             }
 
-            Planter.Outcome result = Planter.Plant(player, piece, Layout.Slots, true, int.MaxValue, State.MarkPlanted);
-            placedAny = result.Planted > 0;
+            Planter.Outcome result = Planter.Plant(player, piece, Layout.Slots, int.MaxValue, State.MarkPlanted);
             Layout.RefreshPlanted(State);
 
             string msg = Loc.T("msg.planted", result.Planted);
@@ -523,7 +521,7 @@ namespace AdvancedPlanting
             if (State.Dirty || !Layout.FullyValidated) return; // let the preview settle first
             if (Layout.ValidCount == 0 || !Planter.CanAffordOne(_player, _piece)) return;
 
-            Planter.Outcome result = Planter.Plant(_player, _piece, Layout.Slots, false, 1, State.MarkPlanted);
+            Planter.Outcome result = Planter.Plant(_player, _piece, Layout.Slots, 1, State.MarkPlanted);
             if (result.Planted == 0) return;
             Layout.RefreshPlanted(State);
             CompleteIfDone();

@@ -9,9 +9,10 @@ namespace AdvancedPlanting
     ///
     /// Vanilla flow (Player.UpdatePlacement): check stamina and requirements once, call
     /// TryPlacePiece, and if it returns true pay once: resources, stamina, tool durability, skill.
-    /// We replace TryPlacePiece. The first plant is paid by that vanilla code after we return true;
-    /// every additional plant is paid here, immediately, with the same formulas. Auto-continue
-    /// runs outside that flow and pays for every plant here.
+    /// We replace TryPlacePiece and pay for every plant here with the same formulas, so the patch
+    /// reports "nothing placed" and vanilla pays nothing. Seeds are checked and taken through
+    /// Player.HaveRequirements and Player.ConsumeResources, the calls other mods hook to use
+    /// seeds from nearby containers, so planting works with them without knowing about them.
     /// </summary>
     public static class Planter
     {
@@ -27,13 +28,9 @@ namespace AdvancedPlanting
         /// <summary>
         /// Plants valid slots, nearest to the player first.
         /// </summary>
-        /// <param name="vanillaPaysFirst">
-        /// True when called from TryPlacePiece: vanilla pays for the first plant after we return.
-        /// False for auto-continue, where nothing in vanilla pays, so every plant is paid here.
-        /// </param>
         /// <param name="limit">Maximum plants to place in this call.</param>
         /// <param name="onPlanted">Receives the position of every plant placed.</param>
-        public static Outcome Plant(Player player, Piece piece, List<PlantSlot> slots, bool vanillaPaysFirst, int limit, Action<Vector3> onPlanted)
+        public static Outcome Plant(Player player, Piece piece, List<PlantSlot> slots, int limit, Action<Vector3> onPlanted)
         {
             var outcome = new Outcome();
             ItemDrop.ItemData tool = player.GetRightItem();
@@ -63,34 +60,35 @@ namespace AdvancedPlanting
                     if (outcome.Planted >= limit) break;
                     PlantSlot slot = slots[index];
 
-                    bool paidByVanilla = vanillaPaysFirst && outcome.Planted == 0;
-                    if (!paidByVanilla)
+                    if (!free && !player.HaveRequirements(piece, Player.RequirementMode.CanBuild))
                     {
-                        // When vanilla still owes the first plant, keep its seeds and stamina in reserve.
-                        int reserve = vanillaPaysFirst ? 1 : 0;
-                        if (!free && !HaveResources(player, piece, 1 + reserve))
-                        {
-                            outcome.OutOfSeeds = true;
-                            break;
-                        }
-                        if (!player.HaveStamina(stamina * (1 + reserve)))
-                        {
-                            outcome.OutOfStamina = true;
-                            break;
-                        }
-                        if (tool.m_shared.m_useDurability && tool.m_durability <= 0f)
-                        {
-                            outcome.ToolBroken = true;
-                            break;
-                        }
-                        PayForPlant(player, piece, tool, free, stamina);
+                        outcome.OutOfSeeds = true;
+                        break;
                     }
+                    if (!player.HaveStamina(stamina))
+                    {
+                        outcome.OutOfStamina = true;
+                        break;
+                    }
+                    if (tool.m_shared.m_useDurability && tool.m_durability <= 0f)
+                    {
+                        outcome.ToolBroken = true;
+                        break;
+                    }
+                    PayForPlant(player, piece, tool, free, stamina);
 
                     piece.m_placeEffect = outcome.Planted == 0 ? placeEffect : EmptyEffects;
                     player.PlacePiece(piece, slot.Position, slot.Rotation, outcome.Planted == 0, cheated);
                     CountStats(piece, cheated);
                     outcome.Planted++;
                     onPlanted?.Invoke(slot.Position);
+                }
+                if (outcome.Planted > 0)
+                {
+                    // What vanilla does after a successful placement, besides paying.
+                    player.m_lastToolUseTime = Time.time;
+                    if (global::Hud.instance != null && global::Hud.instance.m_buildUi != null)
+                        global::Hud.instance.m_buildUi.AddRecentPiece(piece);
                 }
             }
             catch (Exception e)
@@ -117,27 +115,12 @@ namespace AdvancedPlanting
             if (tool == null) return false;
             bool free = player.m_noPlacementCost
                 || (ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey()));
-            if (!free && !HaveResources(player, piece, 1)) return false;
+            if (!free && !player.HaveRequirements(piece, Player.RequirementMode.CanBuild)) return false;
             if (tool.m_shared.m_useDurability && tool.m_durability <= 0f) return false;
             return player.HaveStamina(player.GetBuildStamina());
         }
 
         private static readonly EffectList EmptyEffects = new EffectList();
-
-        /// <summary>Requirement check for <paramref name="sets"/> plants at once.</summary>
-        private static bool HaveResources(Player player, Piece piece, int sets)
-        {
-            if (piece.m_resources == null) return true;
-            Inventory inv = player.GetInventory();
-            foreach (Piece.Requirement req in piece.m_resources)
-            {
-                if (req == null || req.m_resItem == null) continue;
-                int amount = req.GetAmount(0) * sets;
-                if (amount <= 0) continue;
-                if (inv.CountItems(req.m_resItem.m_itemData.m_shared.m_name) < amount) return false;
-            }
-            return true;
-        }
 
         /// <summary>Copy of what Player.UpdatePlacement pays after a successful TryPlacePiece.</summary>
         private static void PayForPlant(Player player, Piece piece, ItemDrop.ItemData tool, bool free, float stamina)

@@ -31,8 +31,8 @@ namespace AdvancedPlanting.Patches
 
     /// <summary>
     /// The click handler in Player.UpdatePlacement calls TryPlacePiece and, when it returns
-    /// true, pays for one placement. With a finished figure we plant the whole figure instead
-    /// (paying for every plant beyond the first ourselves) and skip the vanilla single placement.
+    /// true, pays for one placement. With a finished figure we plant the whole figure instead,
+    /// pay for every plant ourselves and return false so vanilla pays nothing.
     /// </summary>
     [HarmonyPatch(typeof(Player), nameof(Player.TryPlacePiece))]
     internal static class Player_TryPlacePiece_Patch
@@ -42,8 +42,8 @@ namespace AdvancedPlanting.Patches
         {
             Plugin plugin = Plugin.Instance;
             if (plugin == null) return true;
-            if (!plugin.TryPlantFigure(__instance, piece, out bool placed)) return true;
-            __result = placed;
+            if (!plugin.TryPlantFigure(__instance, piece)) return true;
+            __result = false;
             return false;
         }
     }

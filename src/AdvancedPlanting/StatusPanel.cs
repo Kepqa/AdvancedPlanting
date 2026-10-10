@@ -34,20 +34,20 @@ namespace AdvancedPlanting
             int max = state.Mode.MaxControlPoints();
             if (max > 0) _sb.Append(" (max ").Append(max).Append(')');
             _sb.Append('\n');
-            _sb.Append("Spacing: ").Append(spacing.ToString("0.00")).Append(" m");
-            if (plant != null) _sb.Append("   grow r=").Append(plant.m_growRadius.ToString("0.00"));
+            AppendParam(state, EditParameter.Spacing, spacing.ToString("0.00") + " m");
+            AppendParam(state, EditParameter.Rows, state.Mode == PathMode.Contour && state.Rows == 0 ? "fill" : state.Rows.ToString());
             _sb.Append('\n');
-            _sb.Append("Rows: ");
-            if (state.Mode == PathMode.Contour && state.Rows == 0) _sb.Append("fill"); else _sb.Append(state.Rows);
-            _sb.Append("   Jitter: ").Append(state.Jitter.ToString("0.00"));
-            _sb.Append("   Thinning: ").Append(state.Thinning.ToString("0.00"));
-            _sb.Append("   Seed: ").Append(state.Seed % 10000).Append('\n');
+            AppendParam(state, EditParameter.Jitter, state.Jitter.ToString("0.00"));
+            AppendParam(state, EditParameter.Thinning, state.Thinning.ToString("0.00"));
+            _sb.Append('\n');
 
             if (state.HasEnoughPoints)
             {
                 int invalid = layout.Slots.Count - layout.ValidCount;
                 _sb.Append("Plants: <color=#80ff80>").Append(layout.ValidCount).Append("</color>");
-                if (invalid > 0) _sb.Append(" + <color=#ff8080>").Append(invalid).Append(" blocked</color>");
+                if (invalid > 0)
+                    _sb.Append(" + <color=#ff8080>").Append(invalid).Append(" blocked: ")
+                        .Append(PlacementValidator.Describe(layout.TopBlockReason)).Append("</color>");
                 if (layout.Truncated) _sb.Append(" <color=#ffd080>(cap reached)</color>");
                 _sb.Append("   Seeds: ");
                 if (seedsInInventory < layout.ValidCount) _sb.Append("<color=#ff8080>");
@@ -65,13 +65,12 @@ namespace AdvancedPlanting
                 .Append('[').Append(_config.AddPointKey.Value).Append("] point  ")
                 .Append('[').Append(_config.RemovePointKey.Value).Append("] undo  ")
                 .Append('[').Append(_config.ClearKey.Value).Append("] clear  ")
-                .Append('[').Append(_config.CycleModeKey.Value).Append("] mode  ")
-                .Append('[').Append(_config.CycleSideKey.Value).Append("] side  ")
-                .Append('[').Append(_config.RerollSeedKey.Value).Append("] seed\n")
-                .Append(ModName(_config.SpacingModifier.Value)).Append("+wheel spacing  ")
-                .Append(ModName(_config.RowsModifier.Value)).Append("+wheel rows  ")
-                .Append(ModName(_config.JitterModifier.Value)).Append("+wheel jitter  ")
-                .Append(ModName(_config.JitterModifier.Value)).Append('+').Append(ModName(_config.ThinningModifier.Value)).Append("+wheel thinning")
+                .Append('[').Append(_config.CycleModeKey.Value).Append("] path  ")
+                .Append('[').Append(_config.CycleSideKey.Value).Append("] side\n")
+                .Append('[').Append(_config.NextParameterKey.Value).Append("] next parameter  ")
+                .Append(Plugin.ModName(_config.ParameterModifier.Value)).Append("+wheel change  ")
+                .Append('[').Append(_config.RerollSeedKey.Value).Append("] reshuffle  ")
+                .Append("LMB plant")
                 .Append("</color></size>");
 
             string text = _sb.ToString();
@@ -123,17 +122,24 @@ namespace AdvancedPlanting
             }
         }
 
-        private static string ModName(KeyCode key)
+        private void AppendParam(FigureState state, EditParameter p, string value)
         {
-            switch (key)
+            bool selected = state.Selected == p;
+            if (selected) _sb.Append("<color=#ffd84d>> ");
+            _sb.Append(ParameterName(p)).Append(": ").Append(value);
+            if (selected) _sb.Append("</color>");
+            _sb.Append("   ");
+        }
+
+        public static string ParameterName(EditParameter p)
+        {
+            switch (p)
             {
-                case KeyCode.LeftAlt:
-                case KeyCode.RightAlt: return "Alt";
-                case KeyCode.LeftControl:
-                case KeyCode.RightControl: return "Ctrl";
-                case KeyCode.LeftShift:
-                case KeyCode.RightShift: return "Shift";
-                default: return key.ToString();
+                case EditParameter.Spacing: return "Spacing";
+                case EditParameter.Rows: return "Rows";
+                case EditParameter.Jitter: return "Jitter";
+                case EditParameter.Thinning: return "Thinning";
+                default: return p.ToString();
             }
         }
     }

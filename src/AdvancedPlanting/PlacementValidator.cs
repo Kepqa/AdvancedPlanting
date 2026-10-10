@@ -9,64 +9,111 @@ namespace AdvancedPlanting
         NoBuildZone,
         PrivateZone,
         NeedCultivated,
+        NeedDirt,
         WrongBiome,
+        TooHot,
+        TooCold,
+        DeepSnow,
         InWater,
         NoSpace,
     }
 
     /// <summary>
-    /// Mirrors the subset of Player.UpdatePlacementGhost checks that matter for plants, for an
-    /// arbitrary world position instead of the cursor.
+    /// Mirrors the plant-relevant checks of Player.UpdatePlacementGhost and Plant.HaveGrowSpace
+    /// (verified against the decompiled game) for an arbitrary position instead of the cursor.
+    /// Growth-time checks (biome, heat, cold) are included too: vanilla lets you plant there,
+    /// but the plant would just wither, so the mod refuses to waste the seed.
     /// </summary>
     public static class PlacementValidator
     {
-        /// <summary>Samples terrain height under (x, z). Returns false when there is no ground.</summary>
-        public static bool TryGetGroundHeight(float x, float z, float probeY, out float height)
+        private static int s_spaceMask;
+
+        /// <summary>Same layers Plant.HaveGrowSpace uses. Plant.m_spaceMask is lazily set, so do not read it.</summary>
+        private static int SpaceMask
+        {
+            get
+            {
+                if (s_spaceMask == 0)
+                    s_spaceMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "piece_nonsolid");
+                return s_spaceMask;
+            }
+        }
+
+        /// <summary>Terrain height under (x, z) via the game's own terrain ray.</summary>
+        public static bool TryGetGroundHeight(float x, float z, out float height)
         {
             height = 0f;
             ZoneSystem zs = ZoneSystem.instance;
             if (zs == null) return false;
-            return zs.GetGroundHeight(new Vector3(x, probeY, z), out height);
+            return zs.GetGroundHeight(new Vector3(x, 0f, z), out height);
         }
 
-        public static PointStatus Check(Vector3 pos, Piece piece, Plant plant)
+        public static PointStatus Check(Vector3 pos, Piece piece, Plant plant, Player player)
         {
             if (Location.IsInsideNoBuildLocation(pos)) return PointStatus.NoBuildZone;
-            if (!PrivateArea.CheckAccess(pos, 0f, false)) return PointStatus.PrivateZone;
+            if (!PrivateArea.CheckAccess(pos, 0f, false, false)) return PointStatus.PrivateZone;
+
+            Heightmap hm = Heightmap.FindHeightmap(pos);
+            if (hm == null && (piece.m_groundOnly || piece.m_cultivatedGroundOnly || piece.m_vegetationGroundOnly))
+                return PointStatus.NoGround;
 
             ZoneSystem zs = ZoneSystem.instance;
-            if (piece != null && piece.m_noInWater && zs != null && pos.y < zs.m_waterLevel) return PointStatus.InWater;
+            if (piece.m_noInWater && zs != null && pos.y < zs.m_waterLevel) return PointStatus.InWater;
 
-            bool needCultivated = (piece != null && piece.m_cultivatedGroundOnly) || (plant != null && plant.m_needCultivatedGround);
-            if (needCultivated)
+            bool needCultivated = piece.m_cultivatedGroundOnly || (plant != null && plant.m_needCultivatedGround);
+            if (needCultivated && (hm == null || !hm.IsCultivated(pos))) return PointStatus.NeedCultivated;
+
+            Heightmap.Biome biome = hm != null ? hm.GetBiome(pos) : Heightmap.FindBiome(pos);
+
+            if (piece.m_vegetationGroundOnly && hm != null)
             {
-                Heightmap hm = Heightmap.FindHeightmap(pos);
-                if (hm == null || !hm.IsCultivated(pos)) return PointStatus.NeedCultivated;
+                float veg = hm.GetVegetationMask(pos);
+                bool noDirt = biome == Heightmap.Biome.AshLands ? veg > 0.1f : veg < 0.25f;
+                if (noDirt) return PointStatus.NeedDirt;
             }
 
-            if (plant != null && plant.m_biome != Heightmap.Biome.None)
+            if (piece.m_onlyInBiome != Heightmap.Biome.None && (biome & piece.m_onlyInBiome) == 0) return PointStatus.WrongBiome;
+
+            if (plant != null)
             {
-                Heightmap.Biome here = Heightmap.FindBiome(pos);
-                if ((plant.m_biome & here) == 0) return PointStatus.WrongBiome;
+                if ((biome & plant.m_biome) == 0) return PointStatus.WrongBiome;
+                if (!plant.m_tolerateHeat && biome == Heightmap.Biome.AshLands && !ShieldGenerator.IsInsideShield(pos)) return PointStatus.TooHot;
+                if (!plant.m_tolerateCold && (biome == Heightmap.Biome.DeepNorth || biome == Heightmap.Biome.Mountain) && !ShieldGenerator.IsInsideShield(pos))
+                    return PointStatus.TooCold;
             }
+
+            if (!piece.m_allowedInDeepSnow && biome == Heightmap.Biome.DeepNorth && hm != null && player != null
+                && hm.GetCultivationMask(pos) > player.m_deepSnowBuildHeight)
+                return PointStatus.DeepSnow;
 
             if (plant != null && !HaveGrowSpace(pos, plant)) return PointStatus.NoSpace;
 
             return PointStatus.Valid;
         }
 
-        /// <summary>Same test Plant.HaveGrowSpace does at grow time, applied before planting.</summary>
+        /// <summary>
+        /// Plant.HaveGrowSpace at a position: any collider in the grow radius blocks, except plants
+        /// that are not healthy. Our ghosts live on the "ghost" layer and are never hit.
+        /// </summary>
         public static bool HaveGrowSpace(Vector3 pos, Plant plant)
         {
             float radius = plant.m_growRadius;
-            if (radius <= 0f) return true;
-            Collider[] hits = Physics.OverlapSphere(pos, radius, plant.m_spaceMask);
-            for (int i = 0; i < hits.Length; i++)
+            if (radius > 0f)
             {
-                Collider c = hits[i];
-                if (c == null || !c.enabled) continue;
-                if (GhostPool.IsGhost(c.gameObject)) continue;
-                return false;
+                Collider[] hits = Physics.OverlapSphere(pos, radius, SpaceMask);
+                for (int i = 0; i < hits.Length; i++)
+                {
+                    Plant other = hits[i].GetComponent<Plant>();
+                    if (other == null || other.GetStatus() == Plant.Status.Healthy) return false;
+                }
+            }
+            if (plant.m_growRadiusVines > 0f)
+            {
+                Collider[] hits = Physics.OverlapSphere(pos, plant.m_growRadiusVines, SpaceMask);
+                for (int i = 0; i < hits.Length; i++)
+                {
+                    if (hits[i].GetComponentInParent<Vine>() != null) return false;
+                }
             }
             return true;
         }
@@ -79,8 +126,12 @@ namespace AdvancedPlanting
                 case PointStatus.NoGround: return "no ground";
                 case PointStatus.NoBuildZone: return "no-build zone";
                 case PointStatus.PrivateZone: return "ward";
-                case PointStatus.NeedCultivated: return "needs cultivated ground";
+                case PointStatus.NeedCultivated: return "not cultivated";
+                case PointStatus.NeedDirt: return "needs dirt";
                 case PointStatus.WrongBiome: return "wrong biome";
+                case PointStatus.TooHot: return "too hot";
+                case PointStatus.TooCold: return "too cold";
+                case PointStatus.DeepSnow: return "deep snow";
                 case PointStatus.InWater: return "in water";
                 case PointStatus.NoSpace: return "no space";
                 default: return status.ToString();

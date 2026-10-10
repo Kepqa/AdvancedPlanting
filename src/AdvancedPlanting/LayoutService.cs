@@ -61,7 +61,7 @@ namespace AdvancedPlanting
         }
 
         /// <summary>Full rebuild: geometry, heights and validation.</summary>
-        public void Rebuild(FigureState state, Piece piece, Plant plant, string prefabName)
+        public void Rebuild(FigureState state, Piece piece, Plant plant, string prefabName, Player player)
         {
             Clear();
             BuiltForPrefab = prefabName;
@@ -88,39 +88,64 @@ namespace AdvancedPlanting
             Truncated = layout.Truncated;
             RejectedByDistance = layout.Rejected;
 
-            float probeY = state.ControlPoints[0].y + 50f;
+            float fallbackY = state.ControlPoints[0].y;
             foreach (LayoutPoint lp in layout.Points)
             {
                 var slot = new PlantSlot { Row = lp.Row };
-                if (!PlacementValidator.TryGetGroundHeight(lp.Position.X, lp.Position.Z, probeY, out float h))
+                if (!PlacementValidator.TryGetGroundHeight(lp.Position.X, lp.Position.Z, out float h))
                 {
-                    slot.Position = new Vector3(lp.Position.X, state.ControlPoints[0].y, lp.Position.Z);
+                    slot.Position = new Vector3(lp.Position.X, fallbackY, lp.Position.Z);
                     slot.Status = PointStatus.NoGround;
                 }
                 else
                 {
                     slot.Position = new Vector3(lp.Position.X, h, lp.Position.Z);
-                    slot.Status = PlacementValidator.Check(slot.Position, piece, plant);
+                    slot.Status = PlacementValidator.Check(slot.Position, piece, plant, player);
                 }
                 slot.Rotation = RotationFor(slot.Position, state.Seed);
-                if (slot.IsValid) ValidCount++;
                 Slots.Add(slot);
             }
+            CountStatuses();
 
-            BuildRowLines(layout, probeY);
+            BuildRowLines(layout, fallbackY);
         }
 
         /// <summary>Cheap pass: re-check ground rules without regenerating geometry.</summary>
-        public void Revalidate(Piece piece, Plant plant)
+        public void Revalidate(Piece piece, Plant plant, Player player)
         {
-            ValidCount = 0;
             for (int i = 0; i < Slots.Count; i++)
             {
                 PlantSlot slot = Slots[i];
                 if (slot.Status == PointStatus.NoGround) continue;
-                slot.Status = PlacementValidator.Check(slot.Position, piece, plant);
-                if (slot.IsValid) ValidCount++;
+                slot.Status = PlacementValidator.Check(slot.Position, piece, plant, player);
                 Slots[i] = slot;
+            }
+            CountStatuses();
+        }
+
+        /// <summary>Most frequent reason a slot is blocked, for the status panel.</summary>
+        public PointStatus TopBlockReason { get; private set; }
+
+        private readonly int[] _statusCounts = new int[16];
+
+        private void CountStatuses()
+        {
+            System.Array.Clear(_statusCounts, 0, _statusCounts.Length);
+            ValidCount = 0;
+            foreach (PlantSlot s in Slots)
+            {
+                if (s.IsValid) ValidCount++;
+                else _statusCounts[(int)s.Status]++;
+            }
+            int best = 0;
+            TopBlockReason = PointStatus.Valid;
+            for (int i = 1; i < _statusCounts.Length; i++)
+            {
+                if (_statusCounts[i] > best)
+                {
+                    best = _statusCounts[i];
+                    TopBlockReason = (PointStatus)i;
+                }
             }
         }
 
@@ -132,7 +157,7 @@ namespace AdvancedPlanting
             return Quaternion.Euler(0f, yaw, 0f);
         }
 
-        private void BuildRowLines(LayoutResult layout, float probeY)
+        private void BuildRowLines(LayoutResult layout, float fallbackY)
         {
             const float drawStep = 0.5f;
             foreach (Polyline curve in layout.RowCurves)
@@ -140,13 +165,13 @@ namespace AdvancedPlanting
                 if (curve.IsDegenerate) continue;
                 var line = new List<Vector3>();
                 int n = Mathf.Max(2, Mathf.CeilToInt(curve.Length / drawStep));
-                int total = curve.IsClosed ? n + 1 : n + 1;
+                int total = n + 1;
                 for (int i = 0; i < total; i++)
                 {
                     float d = curve.Length * i / n;
                     Vec2 p = curve.PointAt(d);
-                    float y = probeY - 50f;
-                    if (PlacementValidator.TryGetGroundHeight(p.X, p.Z, probeY, out float h)) y = h;
+                    float y = fallbackY;
+                    if (PlacementValidator.TryGetGroundHeight(p.X, p.Z, out float h)) y = h;
                     line.Add(new Vector3(p.X, y + 0.15f, p.Z));
                 }
                 RowLines.Add(line);

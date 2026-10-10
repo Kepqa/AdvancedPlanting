@@ -12,14 +12,10 @@ namespace AdvancedPlanting
         public ConfigEntry<KeyCode> ClearKey;
         public ConfigEntry<KeyCode> CycleModeKey;
         public ConfigEntry<KeyCode> CycleSideKey;
+        public ConfigEntry<KeyCode> NextParameterKey;
         public ConfigEntry<KeyCode> RerollSeedKey;
         public ConfigEntry<KeyCode> ToggleModKey;
-
-        // Scroll modifiers
-        public ConfigEntry<KeyCode> SpacingModifier;
-        public ConfigEntry<KeyCode> RowsModifier;
-        public ConfigEntry<KeyCode> JitterModifier;
-        public ConfigEntry<KeyCode> ThinningModifier;
+        public ConfigEntry<KeyCode> ParameterModifier;
 
         // Behaviour
         public ConfigEntry<bool> EnabledByDefault;
@@ -45,20 +41,18 @@ namespace AdvancedPlanting
 
         public ModConfig(ConfigFile file)
         {
+            // Defaults avoid every vanilla binding: F is the Forsaken power, R hides weapons (leaves
+            // build mode), X is sit, G the radial menu, Ctrl toggles crouch, middle mouse removes.
             const string keys = "1. Keys";
-            AddPointKey = file.Bind(keys, "AddPoint", KeyCode.F, "Add a control point at the placement cursor.");
-            RemovePointKey = file.Bind(keys, "RemoveLastPoint", KeyCode.Z, "Remove the last control point.");
-            ClearKey = file.Bind(keys, "ClearFigure", KeyCode.X, "Remove all control points.");
-            CycleModeKey = file.Bind(keys, "CycleMode", KeyCode.G, "Cycle path mode: segment, arc, circle, spline, contour.");
-            CycleSideKey = file.Bind(keys, "CycleRowSide", KeyCode.H, "Cycle which side of the path the rows go to (both, left, right).");
-            RerollSeedKey = file.Bind(keys, "RerollSeed", KeyCode.R, "Re-roll the jitter/thinning seed.");
+            AddPointKey = file.Bind(keys, "AddPoint", KeyCode.Z, "Add a control point at the placement cursor.");
+            RemovePointKey = file.Bind(keys, "RemoveLastPoint", KeyCode.Backspace, "Remove the last control point.");
+            ClearKey = file.Bind(keys, "ClearFigure", KeyCode.Delete, "Remove all control points.");
+            CycleModeKey = file.Bind(keys, "CycleMode", KeyCode.H, "Cycle path mode: line, arc, circle, curve, shape fill.");
+            CycleSideKey = file.Bind(keys, "CycleRowSide", KeyCode.J, "Cycle which side of the path the rows go to (both, left, right).");
+            NextParameterKey = file.Bind(keys, "NextParameter", KeyCode.B, "Select which parameter the modifier + mouse wheel changes: spacing, rows, jitter, thinning.");
+            RerollSeedKey = file.Bind(keys, "RerollSeed", KeyCode.Y, "Re-roll the jitter/thinning pattern.");
             ToggleModKey = file.Bind(keys, "ToggleMod", KeyCode.F7, "Enable or disable AdvancedPlanting without unloading it.");
-
-            const string scroll = "2. Scroll modifiers";
-            SpacingModifier = file.Bind(scroll, "Spacing", KeyCode.LeftAlt, "Hold and scroll to change spacing between plants.");
-            RowsModifier = file.Bind(scroll, "Rows", KeyCode.LeftControl, "Hold and scroll to change the number of rows.");
-            JitterModifier = file.Bind(scroll, "Jitter", KeyCode.LeftShift, "Hold and scroll to change jitter (0..1).");
-            ThinningModifier = file.Bind(scroll, "ThinningSecondModifier", KeyCode.LeftAlt, "Hold together with the Jitter modifier and scroll to change thinning (0..1).");
+            ParameterModifier = file.Bind(keys, "ParameterModifier", KeyCode.LeftAlt, "Hold and scroll to change the selected parameter. Without it the wheel rotates as usual.");
 
             const string behaviour = "3. Behaviour";
             EnabledByDefault = file.Bind(behaviour, "EnabledByDefault", true, "Whether the mod is active when the game starts.");

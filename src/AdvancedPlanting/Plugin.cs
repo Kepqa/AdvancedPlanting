@@ -28,7 +28,6 @@ namespace AdvancedPlanting
 
         private float _nextRevalidate;
         private bool _previewVisible;
-        private bool _planting;
 
         // Cached per-frame context, refreshed in Update.
         private Player _player;
@@ -55,7 +54,7 @@ namespace AdvancedPlanting
         private void OnDestroy()
         {
             _harmony?.UnpatchSelf();
-            _ghosts?.DestroyAll();
+            _ghosts?.DestroyRoots();
             _curves?.Destroy();
             Instance = null;
         }
@@ -102,7 +101,7 @@ namespace AdvancedPlanting
                 HidePreview();
                 return;
             }
-            if (!VanillaBridge.TakeInput(_player)) return;
+            if (!_player.TakeInput() || global::Hud.IsPieceSelectionVisible()) return;
 
             if (ZInput.GetKeyDown(Settings.AddPointKey.Value)) AddControlPoint();
             if (ZInput.GetKeyDown(Settings.RemovePointKey.Value)) State.RemoveLastPoint();
@@ -118,6 +117,25 @@ namespace AdvancedPlanting
                 _player.Message(MessageHud.MessageType.Center, "Rows: " + StatusPanel.SideName(State.Side));
             }
             if (ZInput.GetKeyDown(Settings.RerollSeedKey.Value)) State.RerollSeed();
+            if (ZInput.GetKeyDown(Settings.NextParameterKey.Value))
+            {
+                State.NextParameter();
+                _player.Message(MessageHud.MessageType.Center, ModName(Settings.ParameterModifier.Value) + " + wheel: " + StatusPanel.ParameterName(State.Selected));
+            }
+        }
+
+        internal static string ModName(KeyCode key)
+        {
+            switch (key)
+            {
+                case KeyCode.LeftAlt:
+                case KeyCode.RightAlt: return "Alt";
+                case KeyCode.LeftControl:
+                case KeyCode.RightControl: return "Ctrl";
+                case KeyCode.LeftShift:
+                case KeyCode.RightShift: return "Shift";
+                default: return key.ToString();
+            }
         }
 
         private void AddControlPoint()
@@ -145,32 +163,26 @@ namespace AdvancedPlanting
         {
             if (!State.Enabled || _piece == null || player != _player) return false;
 
-            bool spacing = ZInput.GetKey(Settings.SpacingModifier.Value);
-            bool rows = ZInput.GetKey(Settings.RowsModifier.Value);
-            bool jitter = ZInput.GetKey(Settings.JitterModifier.Value);
-            bool thinning = jitter && ZInput.GetKey(Settings.ThinningModifier.Value);
-            if (!spacing && !rows && !jitter) return false;
+            if (!ZInput.GetKey(Settings.ParameterModifier.Value)) return false;
 
             float wheel = ZInput.GetMouseScrollWheel();
-            if (Mathf.Abs(wheel) < 0.01f) return true;
+            if (Mathf.Abs(wheel) < 0.001f) return true;
             int dir = wheel > 0f ? 1 : -1;
 
-            if (thinning)
+            switch (State.Selected)
             {
-                State.AdjustThinning(dir * Settings.ThinningStep.Value);
-            }
-            else if (jitter)
-            {
-                State.AdjustJitter(dir * Settings.JitterStep.Value);
-            }
-            else if (rows)
-            {
-                State.AdjustRows(dir);
-            }
-            else if (spacing)
-            {
-                float min = Layout.MinDistance(_plant);
-                State.AdjustSpacing(_prefabName, Layout.DefaultSpacing(_plant), dir * Settings.SpacingStep.Value, min);
+                case EditParameter.Spacing:
+                    State.AdjustSpacing(_prefabName, Layout.DefaultSpacing(_plant), dir * Settings.SpacingStep.Value, Layout.MinDistance(_plant));
+                    break;
+                case EditParameter.Rows:
+                    State.AdjustRows(dir);
+                    break;
+                case EditParameter.Jitter:
+                    State.AdjustJitter(dir * Settings.JitterStep.Value);
+                    break;
+                case EditParameter.Thinning:
+                    State.AdjustThinning(dir * Settings.ThinningStep.Value);
+                    break;
             }
             return true;
         }
@@ -209,7 +221,7 @@ namespace AdvancedPlanting
             {
                 try
                 {
-                    Layout.Rebuild(State, _piece, _plant, _prefabName);
+                    Layout.Rebuild(State, _piece, _plant, _prefabName, _player);
                 }
                 catch (Exception e)
                 {
@@ -221,7 +233,7 @@ namespace AdvancedPlanting
             }
             else if (Time.time >= _nextRevalidate)
             {
-                Layout.Revalidate(_piece, _plant);
+                Layout.Revalidate(_piece, _plant, _player);
                 _nextRevalidate = Time.time + Settings.RevalidateInterval.Value;
             }
 
@@ -247,52 +259,30 @@ namespace AdvancedPlanting
         public bool TryPlantFigure(Player player, Piece piece, out bool placedAny)
         {
             placedAny = false;
-            if (_planting) return false;
             if (!FigureActive || player != _player || piece == null) return false;
             if (piece.GetComponent<Plant>() == null) return false;
 
-            if (State.Dirty) Layout.Rebuild(State, _piece, _plant, _prefabName);
-            else Layout.Revalidate(_piece, _plant);
+            if (State.Dirty || Layout.BuiltForPrefab != _prefabName) Layout.Rebuild(State, _piece, _plant, _prefabName, _player);
+            else Layout.Revalidate(_piece, _plant, _player);
 
-            int planted = 0;
-            int skipped = 0;
-            bool outOfResources = false;
-            _planting = true;
-            try
+            if (Layout.ValidCount == 0)
             {
-                for (int i = 0; i < Layout.Slots.Count; i++)
-                {
-                    PlantSlot slot = Layout.Slots[i];
-                    if (!slot.IsValid)
-                    {
-                        skipped++;
-                        continue;
-                    }
-                    if (!player.HaveRequirements(piece, Player.RequirementMode.CanBuild))
-                    {
-                        outOfResources = true;
-                        break;
-                    }
-                    if (VanillaBridge.Place(player, piece, slot.Position, slot.Rotation, planted == 0))
-                        planted++;
-                }
-            }
-            catch (Exception e)
-            {
-                Log.LogError("Planting failed: " + e);
-            }
-            finally
-            {
-                _planting = false;
+                string reason = Layout.Slots.Count == 0 ? "figure is empty" : PlacementValidator.Describe(Layout.TopBlockReason);
+                player.Message(MessageHud.MessageType.Center, "Nothing to plant: " + reason);
+                return true;
             }
 
-            placedAny = planted > 0;
-            string msg = "Planted " + planted;
-            if (skipped > 0) msg += ", " + skipped + " blocked";
-            if (outOfResources) msg += ", out of seeds";
+            Planter.Outcome result = Planter.Plant(player, piece, Layout.Slots);
+            placedAny = result.Planted > 0;
+
+            string msg = "Planted " + result.Planted;
+            if (result.Blocked > 0) msg += ", " + result.Blocked + " blocked (" + PlacementValidator.Describe(Layout.TopBlockReason) + ")";
+            if (result.OutOfSeeds) msg += ", out of seeds";
+            if (result.OutOfStamina) msg += ", out of stamina";
+            if (result.ToolBroken) msg += ", tool broken";
             player.Message(MessageHud.MessageType.TopLeft, msg);
 
-            if (planted > 0 && !Settings.KeepFigureAfterPlanting.Value) State.Clear();
+            if (placedAny && !Settings.KeepFigureAfterPlanting.Value) State.Clear();
             else State.MarkDirty();
             return true;
         }
@@ -305,20 +295,20 @@ namespace AdvancedPlanting
             if (State.ControlPoints.Count == 0 && !State.HasEnoughPoints) return;
             if (global::Hud.IsPieceSelectionVisible()) return;
 
-            int seeds = 0;
+            int seeds = int.MaxValue;
             if (_player != null && _piece.m_resources != null)
             {
                 Inventory inv = _player.GetInventory();
                 foreach (Piece.Requirement req in _piece.m_resources)
                 {
-                    if (req?.m_resItem == null || req.m_amount <= 0) continue;
-                    int count = inv.CountItems(req.m_resItem.m_itemData.m_shared.m_name) / req.m_amount;
-                    seeds = seeds == 0 ? count : Mathf.Min(seeds, count);
+                    int amount = req?.m_resItem != null ? req.GetAmount(0) : 0;
+                    if (amount <= 0) continue;
+                    seeds = Mathf.Min(seeds, inv.CountItems(req.m_resItem.m_itemData.m_shared.m_name) / amount);
                 }
             }
+            if (seeds == int.MaxValue) seeds = 0;
 
-            string name = _piece.m_name;
-            if (!string.IsNullOrEmpty(name) && Localization.instance != null) name = Localization.instance.Localize(name);
+            string name = GameText.Localize(_piece.m_name);
             _hud.Draw(State, Layout, _plant, name, seeds, CurrentSpacing);
         }
     }

@@ -4,6 +4,15 @@ using UnityEngine;
 
 namespace AdvancedPlanting
 {
+    /// <summary>Parameter changed by modifier + mouse wheel.</summary>
+    public enum EditParameter
+    {
+        Spacing = 0,
+        Rows = 1,
+        Jitter = 2,
+        Thinning = 3,
+    }
+
     /// <summary>
     /// Everything the player has set up for the current figure: control points, path mode,
     /// spacing, rows, jitter. Mutations set <see cref="Dirty"/> so the preview is rebuilt lazily.
@@ -18,6 +27,9 @@ namespace AdvancedPlanting
         public float Thinning = 0f;
         public uint Seed = 1;
         public bool Enabled = true;
+        public EditParameter Selected = EditParameter.Spacing;
+
+        public void NextParameter() => Selected = (EditParameter)(((int)Selected + 1) % 4);
 
         /// <summary>Spacing remembered per plant prefab so switching seeds keeps sensible values.</summary>
         private readonly Dictionary<string, float> _spacingByPrefab = new Dictionary<string, float>();

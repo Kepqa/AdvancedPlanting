@@ -27,7 +27,7 @@ namespace AdvancedPlanting.Core
                 case PathMode.Arc:
                     return BuildArc(pts[0], pts[1], pts[2], false, resolution);
                 case PathMode.Circle:
-                    return BuildArc(pts[0], pts[1], pts[2], true, resolution);
+                    return BuildCircle(pts[0], pts[1], resolution);
                 case PathMode.Spline:
                     return BuildCatmullRom(pts, false, resolution);
                 case PathMode.Contour:
@@ -100,6 +100,22 @@ namespace AdvancedPlanting.Core
                 pts.Add(new Vec2(center.X + radius * (float)Math.Cos(ang), center.Z + radius * (float)Math.Sin(ang)));
             }
             return new Polyline(pts, fullCircle);
+        }
+
+        /// <summary>Circle around <paramref name="center"/> through <paramref name="edge"/>, starting at the edge point.</summary>
+        public static Polyline BuildCircle(Vec2 center, Vec2 edge, float resolution)
+        {
+            float radius = Vec2.Distance(center, edge);
+            if (radius < 1e-3f) return new Polyline(new[] { center }, false);
+            float a0 = (float)Math.Atan2(edge.Z - center.Z, edge.X - center.X);
+            int segments = Math.Max(12, (int)Math.Ceiling(2f * (float)Math.PI * radius / resolution));
+            var pts = new List<Vec2>(segments);
+            for (int i = 0; i < segments; i++)
+            {
+                float ang = a0 + 2f * (float)Math.PI * i / segments;
+                pts.Add(new Vec2(center.X + radius * (float)Math.Cos(ang), center.Z + radius * (float)Math.Sin(ang)));
+            }
+            return new Polyline(pts, true);
         }
 
         private static float Wrap(float angle)

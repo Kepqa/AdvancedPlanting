@@ -45,7 +45,7 @@ namespace LayoutPreview
                 ("circle_fill", new LayoutRequest
                 {
                     Mode = PathMode.Circle,
-                    ControlPoints = new List<Vec2> { new Vec2(6, 10), new Vec2(15, 19), new Vec2(24, 10) },
+                    ControlPoints = new List<Vec2> { new Vec2(15, 10), new Vec2(24, 10) },
                     Spacing = 1.5f, Rows = 3, Side = RowSide.Left, MinDistance = 1f,
                 }),
                 ("hairpin_trim", new LayoutRequest
@@ -58,6 +58,8 @@ namespace LayoutPreview
 
             foreach ((string name, LayoutRequest req) in scenes)
             {
+                // Same resolution rule the plugin uses.
+                req.Resolution = Math.Min(0.5f, Math.Max(0.1f, req.Spacing / 4f));
                 LayoutResult result = PlantingLayout.Generate(req);
                 string svg = RenderSvg(req, result);
                 string path = Path.Combine(outDir, name + ".svg");

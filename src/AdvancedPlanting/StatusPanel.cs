@@ -30,7 +30,11 @@ namespace AdvancedPlanting
             _sb.Length = 0;
             _sb.Append("<b>").Append(ModeName(state.Mode)).Append("</b>  ·  ").Append(plugin.PlantDisplayName).Append('\n');
 
-            if (layout.Slots.Count > 0)
+            if (layout.TooLarge)
+            {
+                _sb.Append("<color=#ff8080>").Append(plugin.TooLargeText(layout.Extent)).Append("</color>\n");
+            }
+            else if (layout.Slots.Count > 0)
             {
                 _sb.Append("<color=#90ee90>").Append(Loc.T("panel.to_plant", layout.ValidCount)).Append("</color>");
                 if (layout.PlantedCount > 0) _sb.Append("   <color=#c8c8c8>").Append(Loc.T("panel.planted", layout.PlantedCount)).Append("</color>");

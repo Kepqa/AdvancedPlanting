@@ -34,6 +34,14 @@ namespace AdvancedPlanting.Core
             int sampleCount = Math.Max(2, (int)Math.Ceiling(length / resolution));
             if (dense.IsClosed) sampleCount = Math.Max(3, sampleCount);
 
+            // The trim test only needs the curve roughly: a copy with edges ~15% of the offset
+            // changes distances by far less than the 2% tolerance margin, and is much cheaper
+            // for wide offsets (inner rings of a fill). Cells about half the tolerance keep each
+            // query to a few cells around the point.
+            float coarseStep = Math.Min(2f, Math.Max(resolution, Math.Abs(distance) * 0.15f));
+            Polyline coarse = coarseStep > resolution * 1.5f ? dense.Resample(coarseStep) : dense;
+            var grid = new SegmentGrid(coarse, Math.Max(resolution * 2f, tolerance * 0.5f));
+
             var current = new List<Vec2>();
             var pieces = new List<List<Vec2>>();
             int total = dense.IsClosed ? sampleCount : sampleCount + 1;
@@ -41,7 +49,7 @@ namespace AdvancedPlanting.Core
             {
                 float d = dense.IsClosed ? length * i / sampleCount : Math.Min(length, length * i / sampleCount);
                 Vec2 p = dense.PointAt(d) + dense.NormalAt(d) * distance;
-                bool valid = dense.DistanceTo(p) >= tolerance;
+                bool valid = !grid.AnyCloserThan(p, tolerance);
                 if (valid)
                 {
                     current.Add(p);

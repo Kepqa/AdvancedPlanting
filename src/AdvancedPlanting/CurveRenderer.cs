@@ -20,9 +20,10 @@ namespace AdvancedPlanting
 
         private static readonly Color ValidRing = new Color(0.35f, 0.95f, 0.45f, 0.85f);
         private static readonly Color BlockedRing = new Color(1f, 0.3f, 0.25f, 0.9f);
+        private static readonly Color PendingRing = new Color(0.85f, 0.85f, 0.8f, 0.6f);
         private static readonly Color SnapColor = new Color(0.4f, 0.85f, 1f, 1f);
 
-        private const int RingSegments = 20;
+        private const int RingSegments = 16;
 
         private readonly ModConfig _config;
         private readonly List<LineRenderer> _lines = new List<LineRenderer>();
@@ -39,13 +40,13 @@ namespace AdvancedPlanting
         }
 
         /// <param name="snapIndex">Control point a click would snap to (finish/close), or -1.</param>
-        public void Apply(List<List<Vector3>> rowLines, List<Vector3> controlPoints, int snapIndex, List<PlantSlot> slots, float growRadius)
+        public void Apply(List<List<Vector3>> rowLines, List<Vector3> controlPoints, int snapIndex, List<PlantSlot> slots, float growRadius, bool warning)
         {
             EnsureRoot();
             float width = _config.CurveWidth.Value;
 
             int lineCount = _config.ShowCurve.Value ? rowLines.Count : 0;
-            Color rowColor = _config.CurveColor.Value;
+            Color rowColor = warning ? BlockedRing : _config.CurveColor.Value;
             for (int i = 0; i < lineCount; i++)
             {
                 LineRenderer lr = Get(_lines, i, "row", loop: false);
@@ -99,7 +100,7 @@ namespace AdvancedPlanting
                     lr.positionCount = RingSegments;
                     lr.SetPositions(_ringBuffer);
                     lr.startWidth = lr.endWidth = width * 0.6f;
-                    lr.startColor = lr.endColor = slot.IsValid ? ValidRing : BlockedRing;
+                    lr.startColor = lr.endColor = slot.IsValid ? ValidRing : slot.IsPending ? PendingRing : BlockedRing;
                     lr.enabled = true;
                 }
             }

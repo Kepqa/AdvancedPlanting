@@ -32,8 +32,17 @@ namespace AdvancedPlanting
         private Harmony _harmony;
 
         private float _nextRevalidate;
-        private float _nextRubberBand;
+        private float _nextRebuild;
         private Vector3? _builtCursor;
+        private int _appliedVersion = -1;
+        private int _appliedSnap = -2;
+        private bool _ghostsComplete = true;
+
+        /// <summary>Minimum time between geometry rebuilds while dragging sliders or the cursor.</summary>
+        private const float RebuildInterval = 0.08f;
+
+        /// <summary>Slots checked against game rules per frame; a full figure takes a few frames.</summary>
+        private const int ValidationsPerFrame = 40;
         private bool _previewVisible;
         private float _nextAutoPlant;
         private readonly List<PlantSlot> _ghostSlots = new List<PlantSlot>();
@@ -202,7 +211,7 @@ namespace AdvancedPlanting
 
             if (State.Finished)
             {
-                RebuildNow();
+                EnsureValidated();
                 if (Layout.ValidCount > 0)
                 {
                     // Vanilla will plant through TryPlacePiece, unless it has no stamina for the
@@ -237,6 +246,13 @@ namespace AdvancedPlanting
             if (State.ControlPoints.Count > 0 && FlatDistance(State.ControlPoints[State.ControlPoints.Count - 1], cursor) < 0.2f)
                 return true; // double click on the same spot of a fixed-size path: ignore
 
+            float extent = ExtentWith(cursor);
+            if (extent > Settings.MaxFigureSize.Value)
+            {
+                player.Message(MessageHud.MessageType.Center, TooLargeText(extent));
+                return true;
+            }
+
             State.AddPoint(cursor);
             if (State.Finished) player.Message(MessageHud.MessageType.Center, Loc.T("msg.ready", StatusPanel.ModeName(State.Mode)));
             return true;
@@ -255,6 +271,23 @@ namespace AdvancedPlanting
             if (State.Mode == PathMode.Contour && FlatDistance(State.ControlPoints[0], cursor) <= r) return 0;
             return -1;
         }
+
+        /// <summary>Size the figure would have with <paramref name="extra"/> added (same rule as the core).</summary>
+        private float ExtentWith(Vector3 extra)
+        {
+            if (State.Mode == PathMode.Circle && State.ControlPoints.Count == 1)
+                return 2f * FlatDistance(State.ControlPoints[0], extra);
+            float minX = extra.x, maxX = extra.x, minZ = extra.z, maxZ = extra.z;
+            foreach (Vector3 p in State.ControlPoints)
+            {
+                minX = Mathf.Min(minX, p.x); maxX = Mathf.Max(maxX, p.x);
+                minZ = Mathf.Min(minZ, p.z); maxZ = Mathf.Max(maxZ, p.z);
+            }
+            return Mathf.Max(maxX - minX, maxZ - minZ);
+        }
+
+        public string TooLargeText(float extent) =>
+            Loc.T("msg.too_large", Mathf.RoundToInt(extent), Mathf.RoundToInt(Settings.MaxFigureSize.Value));
 
         private static float FlatDistance(Vector3 a, Vector3 b)
         {
@@ -276,7 +309,7 @@ namespace AdvancedPlanting
             Vector3? cursor = State.Finished ? (Vector3?)null : CursorPoint();
             try
             {
-                Layout.Rebuild(State, cursor, _piece, _plant, _prefabName, _player);
+                Layout.Rebuild(State, cursor, _plant, _prefabName);
             }
             catch (Exception e)
             {
@@ -285,10 +318,23 @@ namespace AdvancedPlanting
             }
             _builtCursor = cursor;
             State.ClearDirty();
-            _nextRevalidate = Time.time + Settings.RevalidateInterval.Value;
+            _nextRebuild = Time.unscaledTime + RebuildInterval;
+            _nextRevalidate = Time.unscaledTime + Settings.RevalidateInterval.Value;
         }
 
-        /// <summary>Called by the UpdatePlacementGhost postfix, after vanilla moved its ghost.</summary>
+        /// <summary>Geometry up to date and every slot checked: needed before planting.</summary>
+        private void EnsureValidated()
+        {
+            if (State.Dirty || Layout.BuiltForPrefab != _prefabName) RebuildNow();
+            Layout.ValidateAll(State, _piece, _plant, _player);
+        }
+
+        /// <summary>
+        /// Called by the UpdatePlacementGhost postfix, after vanilla moved its ghost. Keeps the
+        /// per-frame cost bounded: geometry is rebuilt at most every <see cref="RebuildInterval"/>,
+        /// rule checks are spread over frames, and ghosts and lines are only touched when the
+        /// layout actually changed.
+        /// </summary>
         public void OnPlacementGhostUpdated(Player player)
         {
             if (player != Player.m_localPlayer) return;
@@ -298,40 +344,37 @@ namespace AdvancedPlanting
                 return;
             }
 
-            bool prefabChanged = Layout.BuiltForPrefab != _prefabName;
-            if (State.Dirty || prefabChanged)
-            {
-                RebuildNow();
-            }
-            else if (!State.Finished)
+            float now = Time.unscaledTime;
+            bool rebuild = State.Dirty || Layout.BuiltForPrefab != _prefabName;
+            Vector3? cursor = CursorPoint();
+            if (!rebuild && !State.Finished)
             {
                 // Rubber band: the cursor is the next control point.
-                Vector3? cursor = CursorPoint();
-                bool moved = cursor.HasValue != _builtCursor.HasValue
+                rebuild = cursor.HasValue != _builtCursor.HasValue
                     || (cursor.HasValue && FlatDistance(cursor.Value, _builtCursor.Value) > 0.1f);
-                if (moved && Time.time >= _nextRubberBand)
-                {
-                    RebuildNow();
-                    _nextRubberBand = Time.time + 0.05f;
-                }
             }
-            else if (Time.time >= _nextRevalidate)
+            if (rebuild && now >= _nextRebuild) RebuildNow();
+
+            if (!Layout.PassComplete)
+                Layout.ValidateStep(State, _piece, _plant, _player, ValidationsPerFrame);
+            else if (now >= _nextRevalidate)
             {
-                Layout.Revalidate(State, _piece, _plant, _player);
-                _nextRevalidate = Time.time + Settings.RevalidateInterval.Value;
+                Layout.BeginRevalidation();
+                _nextRevalidate = now + Settings.RevalidateInterval.Value;
             }
+
+            int snap = cursor.HasValue ? SnapTarget(cursor.Value) : -1;
+            if (Layout.Version == _appliedVersion && snap == _appliedSnap && _ghostsComplete && _previewVisible) return;
 
             _ghostSlots.Clear();
             foreach (PlantSlot s in Layout.Slots)
             {
-                if (s.IsValid) _ghostSlots.Add(s);
+                if (s.IsValid || s.IsPending) _ghostSlots.Add(s);
             }
-            _ghosts.Apply(player.m_placementGhost, _ghostSlots);
-
-            int snap = -1;
-            Vector3? c = CursorPoint();
-            if (c.HasValue) snap = SnapTarget(c.Value);
-            _overlay.Apply(Layout.RowLines, State.ControlPoints, snap, Layout.Slots, _plant != null ? _plant.m_growRadius : 0f);
+            _ghostsComplete = _ghosts.Apply(player.m_placementGhost, _ghostSlots);
+            _overlay.Apply(Layout.RowLines, State.ControlPoints, snap, Layout.Slots, _plant != null ? _plant.m_growRadius : 0f, Layout.TooLarge);
+            _appliedVersion = Layout.Version;
+            _appliedSnap = snap;
             _previewVisible = true;
         }
 
@@ -341,6 +384,7 @@ namespace AdvancedPlanting
             _ghosts.HideAll();
             _overlay.HideAll();
             _previewVisible = false;
+            _appliedVersion = -1;
         }
 
         // ------------------------------------------------------------------ planting
@@ -355,8 +399,7 @@ namespace AdvancedPlanting
             if (!FigureModeActive || player != _player || piece == null || !State.Finished) return false;
             if (piece.GetComponent<Plant>() == null) return false;
 
-            if (State.Dirty || Layout.BuiltForPrefab != _prefabName) RebuildNow();
-            else Layout.Revalidate(State, _piece, _plant, _player);
+            EnsureValidated();
 
             if (Layout.ValidCount == 0)
             {
@@ -366,7 +409,7 @@ namespace AdvancedPlanting
 
             Planter.Outcome result = Planter.Plant(player, piece, Layout.Slots, true, int.MaxValue, State.MarkPlanted);
             placedAny = result.Planted > 0;
-            Layout.Revalidate(State, _piece, _plant, _player);
+            Layout.RefreshPlanted(State);
 
             string msg = Loc.T("msg.planted", result.Planted);
             if (Layout.ValidCount > 0)
@@ -390,12 +433,12 @@ namespace AdvancedPlanting
             if (global::Hud.InRadial() || !_player.TakeInput()) return;
             _nextAutoPlant = Time.time + Settings.AutoContinueInterval.Value;
 
-            if (State.Dirty) RebuildNow();
+            if (State.Dirty || !Layout.FullyValidated) return; // let the preview settle first
             if (Layout.ValidCount == 0 || !Planter.CanAffordOne(_player, _piece)) return;
 
             Planter.Outcome result = Planter.Plant(_player, _piece, Layout.Slots, false, 1, State.MarkPlanted);
             if (result.Planted == 0) return;
-            Layout.Revalidate(State, _piece, _plant, _player);
+            Layout.RefreshPlanted(State);
             CompleteIfDone();
         }
 
@@ -422,7 +465,7 @@ namespace AdvancedPlanting
                 case PathMode.Arc:
                     return Loc.T(have == 0 ? "hint.arc.start" : have == 1 ? "hint.arc.middle" : "hint.arc.end");
                 case PathMode.Circle:
-                    return Loc.T("hint.circle.point", have + 1);
+                    return Loc.T(have == 0 ? "hint.circle.center" : "hint.circle.edge");
                 case PathMode.Spline:
                     return have < 2 ? Loc.T("hint.curve.point", have + 1) : Loc.T("hint.curve.next");
                 case PathMode.Contour:

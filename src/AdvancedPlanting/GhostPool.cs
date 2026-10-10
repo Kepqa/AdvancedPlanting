@@ -23,12 +23,16 @@ namespace AdvancedPlanting
         private GameObject _activeRoot;
         private GameObject _staging;
 
-        public void Apply(GameObject source, List<PlantSlot> slots)
+        /// <summary>Clones are expensive (instantiate + strip); spread pool growth over frames.</summary>
+        private const int MaxClonesPerCall = 24;
+
+        /// <summary>Places ghosts on the slots. Returns false while the pool is still growing.</summary>
+        public bool Apply(GameObject source, List<PlantSlot> slots)
         {
             if (source == null)
             {
                 HideAll();
-                return;
+                return true;
             }
             EnsureRoots();
 
@@ -39,7 +43,8 @@ namespace AdvancedPlanting
                 _sourceName = source.name;
             }
 
-            while (_ghosts.Count < slots.Count)
+            int budget = MaxClonesPerCall;
+            while (_ghosts.Count < slots.Count && budget-- > 0)
             {
                 GameObject ghost = Clone(source);
                 if (ghost == null) break;
@@ -60,8 +65,9 @@ namespace AdvancedPlanting
                 ghost.transform.position = slot.Position;
                 ghost.transform.rotation = slot.Rotation;
                 if (!ghost.activeSelf) ghost.SetActive(true);
-                SetInvalid(i, !slot.IsValid);
+                SetInvalid(i, slot.IsBlocked);
             }
+            return _ghosts.Count >= slots.Count;
         }
 
         public void HideAll()

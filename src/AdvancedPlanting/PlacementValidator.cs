@@ -18,6 +18,8 @@ namespace AdvancedPlanting
         NoSpace,
         /// <summary>Already planted by this figure; not a problem, just done.</summary>
         Planted,
+        /// <summary>Not checked yet; validation is spread over several frames.</summary>
+        Pending,
     }
 
     /// <summary>
@@ -149,6 +151,7 @@ namespace AdvancedPlanting
                 case PointStatus.InWater: return Loc.T("reason.in_water");
                 case PointStatus.NoSpace: return Loc.T("reason.no_space");
                 case PointStatus.Planted: return Loc.T("reason.planted");
+                case PointStatus.Pending: return Loc.T("reason.pending");
                 default: return status.ToString();
             }
         }

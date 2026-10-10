@@ -19,6 +19,7 @@ namespace AdvancedPlanting
         public ConfigEntry<float> DefaultSpacingFactor;
         public ConfigEntry<float> MinDistanceMargin;
         public ConfigEntry<int> MaxPlants;
+        public ConfigEntry<float> MaxFigureSize;
         public ConfigEntry<bool> RandomRotation;
         public ConfigEntry<float> WarpScale;
         public ConfigEntry<float> RevalidateInterval;
@@ -49,6 +50,8 @@ namespace AdvancedPlanting
                 new ConfigDescription("Minimum distance between plants = grow radius + this margin. Jitter never goes below it.", new AcceptableValueRange<float>(0f, 2f)));
             MaxPlants = file.Bind(behaviour, "MaxPlants", 300,
                 new ConfigDescription("Hard cap on plants per figure, protects frame rate and the server.", new AcceptableValueRange<int>(10, 2000)));
+            MaxFigureSize = file.Bind(behaviour, "MaxFigureSize", 80f,
+                new ConfigDescription("Largest figure in meters (longer side; diameter for a circle). Bigger figures are not previewed or planted, so a stray click far away cannot freeze the game.", new AcceptableValueRange<float>(10f, 500f)));
             RandomRotation = file.Bind(behaviour, "RandomRotation", true, "Give every plant a random yaw instead of the cursor rotation.");
             WarpScale = file.Bind(behaviour, "WarpScale", 6f,
                 new ConfigDescription("Size in meters of the slow waves that bend whole rows when jitter is on.", new AcceptableValueRange<float>(1f, 30f)));

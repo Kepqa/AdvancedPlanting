@@ -50,6 +50,12 @@ namespace AdvancedPlanting.Core
         /// <summary>Safety cap on generated plants.</summary>
         public int MaxPoints = 400;
 
+        /// <summary>
+        /// Largest allowed figure, as the longer side of the guide path's bounding box, in world
+        /// units. Bigger figures are rejected before any heavy work. Zero or less disables the check.
+        /// </summary>
+        public float MaxExtent = 0f;
+
         public float Resolution = CurveBuilder.DefaultResolution;
 
         public float EffectiveRowSpacing => RowSpacing > 0f ? RowSpacing : Spacing;
@@ -82,6 +88,12 @@ namespace AdvancedPlanting.Core
         /// <summary>Number of points removed because they were too close to an accepted point.</summary>
         public int Rejected { get; set; }
 
+        /// <summary>The figure exceeded <see cref="LayoutRequest.MaxExtent"/>; only the guide path is returned.</summary>
+        public bool TooLarge { get; set; }
+
+        /// <summary>Longer side of the guide path's bounding box.</summary>
+        public float Extent { get; set; }
+
         public bool IsEmpty => Points.Count == 0;
     }
 
@@ -103,7 +115,30 @@ namespace AdvancedPlanting.Core
                 return result;
             if (request.Spacing <= 0.05f) return result;
 
+            // Cheap size check on the control points first: a far-away point must never reach
+            // the curve builder with a fine resolution.
+            if (request.MaxExtent > 0f)
+            {
+                float pointsExtent = ExtentOf(request.ControlPoints);
+                if (request.Mode == PathMode.Circle && request.ControlPoints.Count >= 2)
+                    pointsExtent = 2f * Vec2.Distance(request.ControlPoints[0], request.ControlPoints[1]);
+                if (pointsExtent > request.MaxExtent)
+                {
+                    result.TooLarge = true;
+                    result.Extent = pointsExtent;
+                    return result;
+                }
+            }
+
             Polyline guide = CurveBuilder.Build(request.Mode, request.ControlPoints, request.Resolution);
+            result.Extent = ExtentOf(guide.Points);
+            if (request.MaxExtent > 0f && result.Extent > request.MaxExtent)
+            {
+                // Splines can bulge past their control points.
+                result.TooLarge = true;
+                result.RowCurves.Add(guide);
+                return result;
+            }
             if (guide.IsDegenerate)
             {
                 // A single valid control point still produces one plant, so a 2-point "segment"
@@ -116,14 +151,14 @@ namespace AdvancedPlanting.Core
                 return result;
             }
 
-            List<RowCurve> rows = BuildRows(request, guide);
-            foreach (RowCurve row in rows) result.RowCurves.Add(row.Curve);
 
             float maxJitter = MaxJitterOffset(request);
             var accepted = new SpatialHash(Math.Max(0.5f, request.MinDistance));
 
-            foreach (RowCurve row in rows)
+            // Rows are produced lazily, so a fill stops offsetting as soon as the plant cap is hit.
+            foreach (RowCurve row in BuildRows(request, guide))
             {
+                result.RowCurves.Add(row.Curve);
                 List<float> distances = row.Curve.EvenDistances(request.Spacing);
                 for (int i = 0; i < distances.Count; i++)
                 {
@@ -152,6 +187,20 @@ namespace AdvancedPlanting.Core
             }
 
             return result;
+        }
+
+        private static float ExtentOf(IReadOnlyList<Vec2> pts)
+        {
+            if (pts == null || pts.Count == 0) return 0f;
+            float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
+            foreach (Vec2 p in pts)
+            {
+                if (p.X < minX) minX = p.X;
+                if (p.X > maxX) maxX = p.X;
+                if (p.Z < minZ) minZ = p.Z;
+                if (p.Z > maxZ) maxZ = p.Z;
+            }
+            return Math.Max(maxX - minX, maxZ - minZ);
         }
 
         /// <summary>Largest displacement that cannot bring two neighbouring grid points below MinDistance.</summary>
@@ -212,15 +261,14 @@ namespace AdvancedPlanting.Core
             public int Index;
         }
 
-        private static List<RowCurve> BuildRows(LayoutRequest request, Polyline guide)
+        private static IEnumerable<RowCurve> BuildRows(LayoutRequest request, Polyline guide)
         {
-            var rows = new List<RowCurve>();
             float rowSpacing = request.EffectiveRowSpacing;
 
             if (guide.IsClosed && request.Fill)
             {
                 float inward = Offset.InwardSign(guide);
-                rows.Add(new RowCurve { Curve = guide, Index = 0 });
+                yield return new RowCurve { Curve = guide, Index = 0 };
                 for (int k = 1; k < MaxContourRows; k++)
                 {
                     List<Polyline> pieces = Offset.OffsetPolyline(guide, inward * rowSpacing * k, request.Resolution);
@@ -228,12 +276,12 @@ namespace AdvancedPlanting.Core
                     foreach (Polyline piece in pieces)
                     {
                         if (piece.IsDegenerate) continue;
-                        rows.Add(new RowCurve { Curve = piece, Index = k });
                         any = true;
+                        yield return new RowCurve { Curve = piece, Index = k };
                     }
-                    if (!any) break;
+                    if (!any) yield break;
                 }
-                return rows;
+                yield break;
             }
 
             // For closed paths "left" means inside and "right" outside, whatever the winding.
@@ -251,16 +299,15 @@ namespace AdvancedPlanting.Core
 
                 if (k == 0)
                 {
-                    rows.Add(new RowCurve { Curve = guide, Index = 0 });
+                    yield return new RowCurve { Curve = guide, Index = 0 };
                     continue;
                 }
 
                 foreach (Polyline piece in Offset.OffsetPolyline(guide, sideSign * rowSpacing * k, request.Resolution))
                 {
-                    if (!piece.IsDegenerate) rows.Add(new RowCurve { Curve = piece, Index = k });
+                    if (!piece.IsDegenerate) yield return new RowCurve { Curve = piece, Index = k };
                 }
             }
-            return rows;
         }
 
         // ------------------------------------------------------------------ spatial hash

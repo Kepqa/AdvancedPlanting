@@ -15,32 +15,54 @@ namespace AdvancedPlanting
         public int Row;
         public bool IsValid => Status == PointStatus.Valid;
         public bool IsPlanted => Status == PointStatus.Planted;
-        public bool IsBlocked => Status != PointStatus.Valid && Status != PointStatus.Planted;
+        public bool IsPending => Status == PointStatus.Pending;
+        public bool IsBlocked => !IsValid && !IsPlanted && !IsPending;
     }
 
     /// <summary>
-    /// Bridges the pure 2D layout from the core library and the 3D game world: samples terrain
-    /// height for every point, validates it, and prepares the row curves for drawing.
+    /// Bridges the pure 2D layout from the core library and the 3D game world.
+    ///
+    /// Performance: <see cref="Rebuild"/> only does geometry and one ground ray per plant; the
+    /// game-rule checks (biome, wards, cultivated ground, grow space) are spread over frames by
+    /// <see cref="ValidateStep"/>. <see cref="Version"/> changes whenever anything visible
+    /// changes, so the preview is only re-applied when needed.
     /// </summary>
     public sealed class LayoutService
     {
+        private const float PlantedTolerance = 0.2f;
+        private const float RowLineStep = 1f;
+
         private readonly ModConfig _config;
+        private readonly int[] _statusCounts = new int[32];
+        private int _validateCursor;
+        private bool _passComplete = true;
 
         public readonly List<PlantSlot> Slots = new List<PlantSlot>();
         public readonly List<List<Vector3>> RowLines = new List<List<Vector3>>();
-        public bool Truncated { get; private set; }
-        /// <summary>Slots that can be planted right now.</summary>
-        public int ValidCount { get; private set; }
-        public int PlantedCount { get; private set; }
-        public int BlockedCount => Slots.Count - ValidCount - PlantedCount;
 
         /// <summary>Control points the current slots were built from, including the cursor while drawing.</summary>
         public readonly List<Vector3> PreviewPoints = new List<Vector3>();
 
-        private const float PlantedTolerance = 0.2f;
-        public int RejectedByDistance { get; private set; }
+        public bool Truncated { get; private set; }
 
-        /// <summary>Plant prefab the current slots were built for.</summary>
+        /// <summary>The figure exceeds the size limit; nothing is laid out, the guide is drawn as a warning.</summary>
+        public bool TooLarge { get; private set; }
+        public float Extent { get; private set; }
+        public int ValidCount { get; private set; }
+        public int PlantedCount { get; private set; }
+        public int PendingCount { get; private set; }
+        public int BlockedCount => Slots.Count - ValidCount - PlantedCount - PendingCount;
+        public PointStatus TopBlockReason { get; private set; }
+
+        /// <summary>Incremented whenever slots, statuses or lines change.</summary>
+        public int Version { get; private set; }
+
+        /// <summary>True when every slot has been checked at least once since the last rebuild.</summary>
+        public bool FullyValidated => PendingCount == 0;
+
+        /// <summary>True between the end of one validation pass and the start of the next.</summary>
+        public bool PassComplete => _passComplete;
+
         public string BuiltForPrefab { get; private set; }
 
         public LayoutService(ModConfig config)
@@ -67,19 +89,22 @@ namespace AdvancedPlanting
             Slots.Clear();
             RowLines.Clear();
             PreviewPoints.Clear();
-            PlantedCount = 0;
             Truncated = false;
-            ValidCount = 0;
-            RejectedByDistance = 0;
+            TooLarge = false;
+            Extent = 0f;
+            ValidCount = PlantedCount = PendingCount = 0;
+            TopBlockReason = PointStatus.Valid;
             BuiltForPrefab = null;
+            _validateCursor = 0;
+            _passComplete = true;
+            Version++;
         }
 
         /// <summary>
-        /// Full rebuild: geometry, heights and validation. While the figure is still being drawn,
-        /// <paramref name="cursor"/> is used as the next control point, so the player sees the
-        /// shape before committing to the click.
+        /// Geometry rebuild. While the figure is still being drawn, <paramref name="cursor"/> is used
+        /// as the next control point (rubber band). New slots start as Pending until validated.
         /// </summary>
-        public void Rebuild(FigureState state, Vector3? cursor, Piece piece, Plant plant, string prefabName, Player player)
+        public void Rebuild(FigureState state, Vector3? cursor, Plant plant, string prefabName)
         {
             Clear();
             BuiltForPrefab = prefabName;
@@ -87,10 +112,11 @@ namespace AdvancedPlanting
             int max = state.Mode.MaxControlPoints();
             if (!state.Finished && cursor.HasValue && (max == 0 || PreviewPoints.Count < max))
                 PreviewPoints.Add(cursor.Value);
+
             if (PreviewPoints.Count < state.Mode.MinControlPoints())
             {
-                // Not a figure yet (e.g. the first two points of an arc): draw a plain guide line
-                // through the points and the cursor so the player still sees where it goes.
+                // Not a figure yet (e.g. the first two points of an arc): a plain guide line
+                // through the points and the cursor still shows where it goes.
                 if (PreviewPoints.Count >= 2)
                 {
                     var helper = new List<Vector3>();
@@ -115,75 +141,120 @@ namespace AdvancedPlanting
                 MinDistance = MinDistance(plant),
                 WarpScale = _config.WarpScale.Value,
                 MaxPoints = _config.MaxPlants.Value,
+                // A quarter of the spacing is plenty for placing plants and keeps wide figures cheap.
+                Resolution = Mathf.Clamp(spacing / 4f, 0.1f, 0.5f),
+                MaxExtent = _config.MaxFigureSize.Value,
             };
             foreach (Vector3 p in PreviewPoints) request.ControlPoints.Add(new Vec2(p.x, p.z));
 
             LayoutResult layout = PlantingLayout.Generate(request);
             Truncated = layout.Truncated;
-            RejectedByDistance = layout.Rejected;
+            TooLarge = layout.TooLarge;
+            Extent = layout.Extent;
+            if (TooLarge)
+            {
+                var warning = new List<Vector3>();
+                foreach (Vector3 p in PreviewPoints) warning.Add(p + Vector3.up * 0.15f);
+                if (state.IsClosedPath && warning.Count > 2) warning.Add(warning[0]);
+                RowLines.Add(warning);
+                Version++;
+                return;
+            }
 
             float fallbackY = PreviewPoints[0].y;
             foreach (LayoutPoint lp in layout.Points)
             {
-                var slot = new PlantSlot { Row = lp.Row, Normal = Vector3.up };
-                var flat = new Vector3(lp.Position.X, fallbackY, lp.Position.Z);
-                if (state.IsPlanted(flat, PlantedTolerance))
+                var slot = new PlantSlot { Row = lp.Row, Normal = Vector3.up, Status = PointStatus.Pending };
+                if (PlacementValidator.TryGetGround(lp.Position.X, lp.Position.Z, out float h, out Vector3 n))
                 {
-                    slot.Position = PlacementValidator.TryGetGround(flat.x, flat.z, out float ph, out Vector3 pn) ? new Vector3(flat.x, ph, flat.z) : flat;
-                    slot.Status = PointStatus.Planted;
+                    slot.Position = new Vector3(lp.Position.X, h, lp.Position.Z);
+                    slot.Normal = n;
                 }
-                else if (!PlacementValidator.TryGetGround(lp.Position.X, lp.Position.Z, out float h, out Vector3 n))
+                else
                 {
                     slot.Position = new Vector3(lp.Position.X, fallbackY, lp.Position.Z);
                     slot.Status = PointStatus.NoGround;
                 }
-                else
-                {
-                    slot.Position = new Vector3(lp.Position.X, h, lp.Position.Z);
-                    slot.Normal = n;
-                    slot.Status = PlacementValidator.Check(slot.Position, piece, plant, player);
-                }
+                if (state.IsPlanted(slot.Position, PlantedTolerance)) slot.Status = PointStatus.Planted;
                 slot.Rotation = RotationFor(slot.Position, state.Seed);
                 Slots.Add(slot);
             }
-            CountStatuses();
 
             BuildRowLines(layout, fallbackY);
-        }
-
-        /// <summary>Cheap pass: re-check ground rules without regenerating geometry.</summary>
-        public void Revalidate(FigureState state, Piece piece, Plant plant, Player player)
-        {
-            for (int i = 0; i < Slots.Count; i++)
-            {
-                PlantSlot slot = Slots[i];
-                if (slot.Status == PointStatus.NoGround || slot.Status == PointStatus.Planted) continue;
-                if (state.IsPlanted(slot.Position, PlantedTolerance))
-                {
-                    slot.Status = PointStatus.Planted;
-                    Slots[i] = slot;
-                    continue;
-                }
-                slot.Status = PlacementValidator.Check(slot.Position, piece, plant, player);
-                Slots[i] = slot;
-            }
+            _validateCursor = 0;
+            _passComplete = false;
             CountStatuses();
         }
 
-        /// <summary>Most frequent reason a slot is blocked, for the status panel.</summary>
-        public PointStatus TopBlockReason { get; private set; }
+        /// <summary>
+        /// Validates up to <paramref name="budget"/> slots, continuing where the last call stopped.
+        /// Pending slots are always processed first in order. Returns true when a pass finished.
+        /// </summary>
+        public bool ValidateStep(FigureState state, Piece piece, Plant plant, Player player, int budget)
+        {
+            if (_passComplete || Slots.Count == 0)
+            {
+                _passComplete = true;
+                return false;
+            }
+            bool changed = false;
+            int end = Mathf.Min(Slots.Count, _validateCursor + budget);
+            for (; _validateCursor < end; _validateCursor++)
+            {
+                PlantSlot slot = Slots[_validateCursor];
+                if (slot.Status == PointStatus.NoGround || slot.Status == PointStatus.Planted) continue;
+                PointStatus status = state.IsPlanted(slot.Position, PlantedTolerance)
+                    ? PointStatus.Planted
+                    : PlacementValidator.Check(slot.Position, piece, plant, player);
+                if (status == slot.Status) continue;
+                slot.Status = status;
+                Slots[_validateCursor] = slot;
+                changed = true;
+            }
+            if (_validateCursor >= Slots.Count) _passComplete = true;
+            if (changed || _passComplete) CountStatuses();
+            return _passComplete;
+        }
 
-        private readonly int[] _statusCounts = new int[32];
+        /// <summary>Starts a new validation pass over all slots, keeping current statuses visible.</summary>
+        public void BeginRevalidation()
+        {
+            if (Slots.Count == 0) return;
+            _validateCursor = 0;
+            _passComplete = false;
+        }
+
+        /// <summary>Finishes validation right now. Used before planting.</summary>
+        public void ValidateAll(FigureState state, Piece piece, Plant plant, Player player)
+        {
+            if (_passComplete && PendingCount == 0) BeginRevalidation();
+            ValidateStep(state, piece, plant, player, int.MaxValue);
+        }
+
+        /// <summary>Marks slots planted by this figure without a full validation pass.</summary>
+        public void RefreshPlanted(FigureState state)
+        {
+            bool changed = false;
+            for (int i = 0; i < Slots.Count; i++)
+            {
+                PlantSlot s = Slots[i];
+                if (s.IsPlanted || !state.IsPlanted(s.Position, PlantedTolerance)) continue;
+                s.Status = PointStatus.Planted;
+                Slots[i] = s;
+                changed = true;
+            }
+            if (changed) CountStatuses();
+        }
 
         private void CountStatuses()
         {
             System.Array.Clear(_statusCounts, 0, _statusCounts.Length);
-            ValidCount = 0;
-            PlantedCount = 0;
+            ValidCount = PlantedCount = PendingCount = 0;
             foreach (PlantSlot s in Slots)
             {
                 if (s.IsValid) ValidCount++;
                 else if (s.IsPlanted) PlantedCount++;
+                else if (s.IsPending) PendingCount++;
                 else _statusCounts[(int)s.Status]++;
             }
             int best = 0;
@@ -196,6 +267,7 @@ namespace AdvancedPlanting
                     TopBlockReason = (PointStatus)i;
                 }
             }
+            Version++;
         }
 
         private Quaternion RotationFor(Vector3 pos, uint seed)
@@ -208,19 +280,15 @@ namespace AdvancedPlanting
 
         private void BuildRowLines(LayoutResult layout, float fallbackY)
         {
-            const float drawStep = 0.5f;
             foreach (Polyline curve in layout.RowCurves)
             {
                 if (curve.IsDegenerate) continue;
-                var line = new List<Vector3>();
-                int n = Mathf.Max(2, Mathf.CeilToInt(curve.Length / drawStep));
-                int total = n + 1;
-                for (int i = 0; i < total; i++)
+                int n = Mathf.Max(2, Mathf.CeilToInt(curve.Length / RowLineStep));
+                var line = new List<Vector3>(n + 1);
+                for (int i = 0; i <= n; i++)
                 {
-                    float d = curve.Length * i / n;
-                    Vec2 p = curve.PointAt(d);
-                    float y = fallbackY;
-                    if (PlacementValidator.TryGetGroundHeight(p.X, p.Z, out float h)) y = h;
+                    Vec2 p = curve.PointAt(curve.Length * i / n);
+                    float y = PlacementValidator.TryGetGroundHeight(p.X, p.Z, out float h) ? h : fallbackY;
                     line.Add(new Vector3(p.X, y + 0.15f, p.Z));
                 }
                 RowLines.Add(line);

@@ -43,8 +43,10 @@ namespace AdvancedPlanting.Core.Tests
         [Fact]
         public void Circle_IsClosedWithFullCircumference()
         {
-            var pl = CurveBuilder.Build(PathMode.Circle, new[] { new Vec2(-5, 0), new Vec2(0, 5), new Vec2(5, 0) });
+            var pl = CurveBuilder.Build(PathMode.Circle, new[] { new Vec2(0, 0), new Vec2(5, 0) });
             Assert.True(pl.IsClosed);
+            AssertClose(pl.PointAt(0), new Vec2(5, 0), 0.01f);
+            Assert.All(pl.Points, p => Assert.InRange(p.Length, 4.99f, 5.01f));
             Assert.InRange(pl.Length, 2 * Math.PI * 5 - 0.05, 2 * Math.PI * 5 + 0.05);
         }
 

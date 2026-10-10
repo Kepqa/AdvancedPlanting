@@ -211,6 +211,15 @@ namespace AdvancedPlanting.Core
             return result;
         }
 
+        /// <summary>Evenly spaced copy with edges about <paramref name="step"/> long (coarser or finer).</summary>
+        public Polyline Resample(float step)
+        {
+            if (IsDegenerate || step <= 0f) return this;
+            var pts = new List<Vec2>();
+            foreach (float d in EvenDistances(step)) pts.Add(PointAt(d));
+            return new Polyline(pts, IsClosed);
+        }
+
         /// <summary>Densify so that no edge is longer than maxEdge; used before offsetting.</summary>
         public Polyline Densify(float maxEdge)
         {

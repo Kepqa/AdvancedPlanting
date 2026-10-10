@@ -9,7 +9,7 @@ namespace AdvancedPlanting.Core
         /// <summary>Circular arc through three control points (start, mid, end).</summary>
         Arc = 1,
 
-        /// <summary>Full circle through three control points.</summary>
+        /// <summary>Full circle: first point is the centre, second a point on the edge.</summary>
         Circle = 2,
 
         /// <summary>Open centripetal Catmull-Rom spline through all control points.</summary>
@@ -27,7 +27,7 @@ namespace AdvancedPlanting.Core
             {
                 case PathMode.Segment: return 2;
                 case PathMode.Arc: return 3;
-                case PathMode.Circle: return 3;
+                case PathMode.Circle: return 2;
                 case PathMode.Spline: return 2;
                 case PathMode.Contour: return 3;
                 default: return 2;
@@ -41,7 +41,7 @@ namespace AdvancedPlanting.Core
             {
                 case PathMode.Segment: return 2;
                 case PathMode.Arc: return 3;
-                case PathMode.Circle: return 3;
+                case PathMode.Circle: return 2;
                 default: return 0;
             }
         }

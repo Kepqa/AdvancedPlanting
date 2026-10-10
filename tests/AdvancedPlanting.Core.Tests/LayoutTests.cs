@@ -198,7 +198,7 @@ namespace AdvancedPlanting.Core.Tests
         [Fact]
         public void Circle_Fill_ReachesTheCentre_AndWithoutFillKeepsRowCount()
         {
-            var pts = new List<Vec2> { new Vec2(-8, 0), new Vec2(0, 8), new Vec2(8, 0) };
+            var pts = new List<Vec2> { new Vec2(0, 0), new Vec2(8, 0) };
             var filled = new LayoutRequest { Mode = PathMode.Circle, ControlPoints = pts, Spacing = 1.5f, Fill = true, MinDistance = 1f, MaxPoints = 5000 };
             LayoutResult f = PlantingLayout.Generate(filled);
             float nearest = f.Points.Min(p => p.Position.Length);
@@ -230,6 +230,29 @@ namespace AdvancedPlanting.Core.Tests
                     Assert.True(Vec2.Distance(r.Points[i].Position, r.Points[j].Position) >= req.MinDistance - 1e-4f);
                 }
             }
+        }
+
+        [Fact]
+        public void MaxExtent_RejectsHugeFigures_Instantly()
+        {
+            var req = new LayoutRequest
+            {
+                Mode = PathMode.Contour,
+                ControlPoints = new List<Vec2> { new Vec2(0, 0), new Vec2(5000, 0), new Vec2(5000, 5000), new Vec2(0, 5000) },
+                Spacing = 1f, Fill = true, MinDistance = 0.5f, MaxExtent = 80f, Resolution = 0.1f,
+            };
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            LayoutResult r = PlantingLayout.Generate(req);
+            Assert.True(r.TooLarge);
+            Assert.True(r.IsEmpty);
+            Assert.InRange(r.Extent, 4999f, 5001f);
+            Assert.True(sw.ElapsedMilliseconds < 50, $"took {sw.ElapsedMilliseconds} ms");
+
+            var circle = new LayoutRequest { Mode = PathMode.Circle, ControlPoints = new List<Vec2> { new Vec2(0, 0), new Vec2(50, 0) }, Spacing = 2f, MinDistance = 1f, MaxExtent = 80f };
+            Assert.True(PlantingLayout.Generate(circle).TooLarge); // diameter 100 > 80
+
+            var ok = new LayoutRequest { Mode = PathMode.Circle, ControlPoints = new List<Vec2> { new Vec2(0, 0), new Vec2(30, 0) }, Spacing = 2f, MinDistance = 1f, MaxExtent = 80f };
+            Assert.False(PlantingLayout.Generate(ok).TooLarge);
         }
 
         [Fact]

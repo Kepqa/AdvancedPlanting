@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.4
+
+- Translations: Ukrainian, German, French, Spanish, Portuguese (Brazil), Polish, Chinese (Simplified), Japanese.
+- Russian: the "ready" message now agrees with every path name.
+- README: badges and a donate link.
+
 ## 0.4.3
 
 - Declared incompatible with other planting mods: BepInEx skips AdvancedPlanting when one is installed and logs the reason.

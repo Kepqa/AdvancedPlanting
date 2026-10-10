@@ -25,7 +25,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>AdvancedPlanting</AssemblyName>
     <RootNamespace>AdvancedPlanting</RootNamespace>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <Authors>kepqa</Authors>
     <Company>kepqa</Company>
     <Copyright>Copyright (c) 2026 kepqa</Copyright>
@@ -109,8 +109,10 @@
       dist/kepqa-AdvancedPlanting-<version>.zip
         manifest.json  (generated from the properties below)
         icon.png, README.md, CHANGELOG.md
-        plugins/AdvancedPlanting.dll, plugins/AdvancedPlanting.Core.dll
-        plugins/Translations/*.txt
+        AdvancedPlanting.dll, AdvancedPlanting.Core.dll
+        Translations/*.txt
+    DLLs sit at the archive root, the layout r2modman and Thunderstore install straight into
+    BepInEx/plugins/kepqa-AdvancedPlanting/ (a nested plugins/ folder was not picked up).
     Upload it at thunderstore.io under the team "kepqa".
   -->
   <PropertyGroup>
@@ -135,11 +137,11 @@
       <ManifestLines Include="}" />
     </ItemGroup>
     <RemoveDir Directories="$(PackageStaging)" />
-    <MakeDir Directories="$(PackageStaging)plugins/Translations" />
+    <MakeDir Directories="$(PackageStaging)Translations" />
     <WriteLinesToFile File="$(PackageStaging)manifest.json" Lines="@(ManifestLines)" Overwrite="true" Encoding="us-ascii" /><!-- Thunderstore rejects a UTF-8 BOM; the manifest is plain ASCII -->
     <Copy SourceFiles="$(RepoRoot)thunderstore/icon.png;$(RepoRoot)README.md;$(RepoRoot)CHANGELOG.md" DestinationFolder="$(PackageStaging)" />
-    <Copy SourceFiles="$(OutDir)AdvancedPlanting.dll;$(OutDir)AdvancedPlanting.Core.dll" DestinationFolder="$(PackageStaging)plugins" />
-    <Copy SourceFiles="@(PackageTranslations)" DestinationFolder="$(PackageStaging)plugins/Translations" />
+    <Copy SourceFiles="$(OutDir)AdvancedPlanting.dll;$(OutDir)AdvancedPlanting.Core.dll" DestinationFolder="$(PackageStaging)" />
+    <Copy SourceFiles="@(PackageTranslations)" DestinationFolder="$(PackageStaging)Translations" />
     <Delete Files="$(PackageZip)" />
     <ZipDirectory SourceDirectory="$(PackageStaging)" DestinationFile="$(PackageZip)" />
     <Message Importance="high" Text="Thunderstore package: $(PackageZip)" />

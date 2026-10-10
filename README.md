@@ -66,7 +66,7 @@ A radial menu in the style of the emote wheel:
 
 ## Translations
 
-All texts come from `plugins/Translations/<Language>.txt` next to the DLL, in `key = value` lines. The file name is the language name from the game settings: `English`, `Russian`, `German`, and so on. English and Russian are included. To add a language, copy `English.txt`, rename it and translate the values; it is picked up with the game's language setting.
+All texts come from `Translations/<Language>.txt` next to the DLL, in `key = value` lines. The file name is the language name from the game settings: `English`, `Russian`, `German`, and so on. English and Russian are included. To add a language, copy `English.txt`, rename it and translate the values; it is picked up with the game's language setting.
 
 ## Compatibility
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Fix: the 0.4.0 package kept the DLLs in a nested plugins/ folder, so the mod was not installed where BepInEx looks and did not load. DLLs are back at the package root.
+
 ## 0.4.0
 
 - New settings window and status panel design: dark wood and bronze artwork drawn by the mod, the game's bold Averia font, high-contrast text, icon buttons for path types, custom sliders and checkboxes.

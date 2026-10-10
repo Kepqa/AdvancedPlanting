@@ -62,11 +62,15 @@ namespace AdvancedPlanting
             Instance = this;
             Log = Logger;
             Settings = new ModConfig(Config);
+            ServerConfig.Init(Settings);
             Loc.Load();
             // Wheel icons and window artwork are rendered on a worker thread so the first
             // opening of the wheel does not stall the game.
-            Icons.Prewarm();
-            UiKit.Prewarm();
+            if (!IsHeadless)
+            {
+                Icons.Prewarm();
+                UiKit.Prewarm();
+            }
             State = new FigureState { Enabled = Settings.EnabledByDefault.Value };
             Layout = new LayoutService(Settings);
             Window = new SettingsWindow(this);
@@ -90,6 +94,9 @@ namespace AdvancedPlanting
             _panel?.Destroy();
             Instance = null;
         }
+
+        /// <summary>Dedicated server: no graphics, so no artwork to prepare.</summary>
+        private static bool IsHeadless => SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null;
 
         // ------------------------------------------------------------------ context
 
@@ -122,7 +129,7 @@ namespace AdvancedPlanting
         public float ScaleBuildStamina(Player player, float stamina)
         {
             if (player != _player || !FigureModeActive) return stamina;
-            return stamina * Settings.StaminaCostFactor.Value;
+            return stamina * Settings.StaminaFactor;
         }
 
         /// <summary>True only during our own call to open the radial menu.</summary>
@@ -177,6 +184,7 @@ namespace AdvancedPlanting
 
         private void Update()
         {
+            ServerConfig.Update();
             if (!RefreshContext())
             {
                 Window.Close();
@@ -209,6 +217,14 @@ namespace AdvancedPlanting
             {
                 State.SetFill(!State.Fill);
                 _player.Message(MessageHud.MessageType.Center, Loc.T(State.Fill ? "wheel.fill.on" : "wheel.fill.off"));
+            }
+            if (Pressed(Settings.RepeatKey.Value) && State.CanRepeat)
+            {
+                GameObject ghost = _player.m_placementGhost;
+                if (ghost == null || !ghost.activeSelf)
+                    _player.Message(MessageHud.MessageType.Center, Loc.T("msg.aim"));
+                else if (State.RepeatAt(ghost.transform.position))
+                    _player.Message(MessageHud.MessageType.Center, Loc.T("msg.ready", StatusPanel.ModeName(State.Mode)));
             }
             if (Pressed(Settings.ClearKey.Value) && !State.IsEmpty)
             {
@@ -329,7 +345,7 @@ namespace AdvancedPlanting
                 return true; // double click on the same spot of a fixed-size path: ignore
 
             float extent = ExtentWith(cursor);
-            if (extent > Settings.MaxFigureSize.Value)
+            if (extent > Settings.FigureSizeLimit)
             {
                 player.Message(MessageHud.MessageType.Center, TooLargeText(extent));
                 return true;
@@ -369,7 +385,7 @@ namespace AdvancedPlanting
         }
 
         public string TooLargeText(float extent) =>
-            Loc.T("msg.too_large", Mathf.RoundToInt(extent), Mathf.RoundToInt(Settings.MaxFigureSize.Value));
+            Loc.T("msg.too_large", Mathf.RoundToInt(extent), Mathf.RoundToInt(Settings.FigureSizeLimit));
 
         private static float FlatDistance(Vector3 a, Vector3 b)
         {
@@ -580,6 +596,8 @@ namespace AdvancedPlanting
                 list.Add(new KeyValuePair<string, string>(Loc.T("hint.fill_key", Loc.T(State.Fill ? "hint.on" : "hint.off")), KeyName(Settings.FillKey.Value)));
             if (!State.IsEmpty && Settings.ClearKey.Value != KeyCode.None)
                 list.Add(new KeyValuePair<string, string>(Loc.T("hint.clear_key"), KeyName(Settings.ClearKey.Value)));
+            if (State.CanRepeat && Settings.RepeatKey.Value != KeyCode.None)
+                list.Add(new KeyValuePair<string, string>(Loc.T(State.Finished ? "hint.move_key" : "hint.repeat_key"), KeyName(Settings.RepeatKey.Value)));
             list.Add(new KeyValuePair<string, string>(Loc.T("hint.wheel"), WheelKeyName));
             if (list.Count > 6) list.RemoveRange(6, list.Count - 6);
             return list;
@@ -603,8 +621,9 @@ namespace AdvancedPlanting
             float stamina = _player.GetStamina();
             int byStamina = perPlant > 0.01f ? Mathf.FloorToInt(stamina / perPlant) : int.MaxValue;
 
-            string seedText = seeds >= toPlant ? seeds.ToString() : "<color=#ff8080>" + seeds + "</color>";
-            string line = Loc.T("panel.seeds", seedText, toPlant);
+            // Only the inventory is counted. Other mods may let the game take seeds from nearby
+            // containers, so a low count is not shown as a problem.
+            string line = Loc.T("panel.seeds", seeds, toPlant);
             if (perPlant > 0.01f)
             {
                 int now = Mathf.Min(toPlant, byStamina);

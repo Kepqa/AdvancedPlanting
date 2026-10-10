@@ -65,7 +65,7 @@ namespace AdvancedPlanting
                 if (layout.PlantedCount > 0) _sb.Append("   <color=#C9B48F>").Append(Loc.T("panel.planted", layout.PlantedCount)).Append("</color>");
                 if (layout.BlockedCount > 0)
                     _sb.Append("   <color=#FF8C78>").Append(Loc.T("panel.blocked", layout.BlockedCount, PlacementValidator.Describe(layout.TopBlockReason))).Append("</color>");
-                if (layout.Truncated) _sb.Append("   <color=#FFC97A>").Append(Loc.T("panel.cap", _config.MaxPlants.Value)).Append("</color>");
+                if (layout.Truncated) _sb.Append("   <color=#FFC97A>").Append(Loc.T("panel.cap", _config.PlantLimit)).Append("</color>");
                 _sb.Append('\n');
                 _sb.Append(plugin.ResourceLine()).Append('\n');
             }

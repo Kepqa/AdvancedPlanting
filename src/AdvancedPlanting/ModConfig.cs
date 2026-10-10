@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BepInEx.Configuration;
 using UnityEngine;
 
@@ -17,6 +18,7 @@ namespace AdvancedPlanting
         public ConfigEntry<KeyCode> FinishKey;
         public ConfigEntry<KeyCode> FillKey;
         public ConfigEntry<KeyCode> ClearKey;
+        public ConfigEntry<KeyCode> RepeatKey;
         public ConfigEntry<bool> RowsOnMouseWheel;
 
         // Behaviour
@@ -32,6 +34,19 @@ namespace AdvancedPlanting
         public ConfigEntry<float> SnapRadius;
         public ConfigEntry<float> AutoContinueInterval;
 
+        // Server
+        public ConfigEntry<bool> EnforceOnClients;
+
+        /// <summary>Settings a server with this mod imposes on its players (see <see cref="ServerConfig"/>).</summary>
+        public readonly List<ConfigEntryBase> Synced = new List<ConfigEntryBase>();
+
+        public ConfigFile File { get; }
+
+        // Values in effect: the server's while connected to one that enforces them, else local.
+        public float StaminaFactor => ServerConfig.Get(StaminaCostFactor);
+        public int PlantLimit => ServerConfig.Get(MaxPlants);
+        public float FigureSizeLimit => ServerConfig.Get(MaxFigureSize);
+
         // Display
         public ConfigEntry<bool> ShowHud;
         public ConfigEntry<int> HudX;
@@ -44,6 +59,7 @@ namespace AdvancedPlanting
 
         public ModConfig(ConfigFile file)
         {
+            File = file;
             WheelKey = file.Bind("0. Keys", "PlantingWheel", KeyCode.B,
                 "Opens the planting wheel while a seed is selected in build mode. Press again or hold and release to choose. B is unused by the game.");
             FinishKey = file.Bind("0. Keys", "FinishFigure", KeyCode.Z,
@@ -52,6 +68,8 @@ namespace AdvancedPlanting
                 "Turns filling of circles and shapes on or off. The radial-menu key does nothing in build mode, so G is free there. None to disable.");
             ClearKey = file.Bind("0. Keys", "ClearFigure", KeyCode.Backspace,
                 "Removes the whole figure. None to disable.");
+            RepeatKey = file.Bind("0. Keys", "RepeatFigure", KeyCode.T,
+                "Moves the finished figure under the cursor, or places the last figure again once it is planted or cleared. None to disable.");
             RowsOnMouseWheel = file.Bind("0. Keys", "RowsOnMouseWheel", true,
                 "In figure mode the mouse wheel changes the number of rows instead of rotating (plants get a random rotation anyway).");
 
@@ -76,6 +94,12 @@ namespace AdvancedPlanting
                 new ConfigDescription("Click this close to the last point to finish a curve, or to the first point to close a shape.", new AcceptableValueRange<float>(0.2f, 3f)));
             AutoContinueInterval = file.Bind(behaviour, "AutoContinueInterval", 0.6f,
                 new ConfigDescription("Seconds between plants when auto-continue is on.", new AcceptableValueRange<float>(0.2f, 5f)));
+
+            EnforceOnClients = file.Bind("3. Server", "EnforceOnClients", true,
+                "Only matters on a server or the host. Players who have this mod use the server's StaminaCostFactor, MaxPlants and MaxFigureSize instead of their own.");
+            Synced.Add(StaminaCostFactor);
+            Synced.Add(MaxPlants);
+            Synced.Add(MaxFigureSize);
 
             const string display = "2. Display";
             ShowHud = file.Bind(display, "ShowHud", true, "Show the status panel while a seed is selected in figure mode.");

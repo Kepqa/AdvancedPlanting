@@ -140,10 +140,10 @@ namespace AdvancedPlanting
                 Seed = state.Seed,
                 MinDistance = MinDistance(plant),
                 WarpScale = _config.WarpScale.Value,
-                MaxPoints = _config.MaxPlants.Value,
+                MaxPoints = _config.PlantLimit,
                 // A quarter of the spacing is plenty for placing plants and keeps wide figures cheap.
                 Resolution = Mathf.Clamp(spacing / 4f, 0.1f, 0.5f),
-                MaxExtent = _config.MaxFigureSize.Value,
+                MaxExtent = _config.FigureSizeLimit,
             };
             foreach (Vector3 p in PreviewPoints) request.ControlPoints.Add(new Vec2(p.x, p.z));
 

@@ -84,6 +84,7 @@ namespace AdvancedPlanting
 
         public void Clear()
         {
+            if (Finished) RememberShape();
             ControlPoints.Clear();
             Planted.Clear();
             Finished = false;
@@ -155,6 +156,52 @@ namespace AdvancedPlanting
             if (_spacingByPrefab.TryGetValue(prefabName, out float current) && Mathf.Approximately(current, value)) return;
             _spacingByPrefab[prefabName] = value;
             Dirty = true;
+        }
+
+        // Last finished figure, kept after it is planted or cleared so it can be placed again.
+        private readonly List<Vector3> _lastShape = new List<Vector3>();
+        private PathMode _lastMode;
+
+        private void RememberShape()
+        {
+            _lastShape.Clear();
+            _lastShape.AddRange(ControlPoints);
+            _lastMode = Mode;
+        }
+
+        /// <summary>A finished figure, or a remembered one when nothing is drawn, that can be moved.</summary>
+        public bool CanRepeat => Finished || (IsEmpty && _lastShape.Count > 0);
+
+        /// <summary>
+        /// Moves the finished figure, or places the last one again, so its anchor (a circle's
+        /// centre, otherwise the middle of its bounds) is at <paramref name="anchor"/>.
+        /// Rows, spacing and the other settings stay as they are; nothing is marked planted.
+        /// </summary>
+        public bool RepeatAt(Vector3 anchor)
+        {
+            if (!CanRepeat) return false;
+            if (Finished) RememberShape();
+            Vector3 from = AnchorOf(_lastShape, _lastMode);
+            Vector3 shift = anchor - from;
+            ControlPoints.Clear();
+            foreach (Vector3 p in _lastShape) ControlPoints.Add(p + shift);
+            Planted.Clear();
+            Mode = _lastMode;
+            Finished = true;
+            Dirty = true;
+            return true;
+        }
+
+        private static Vector3 AnchorOf(List<Vector3> points, PathMode mode)
+        {
+            if (mode == PathMode.Circle) return points[0];
+            Vector3 min = points[0], max = points[0];
+            foreach (Vector3 p in points)
+            {
+                min = Vector3.Min(min, p);
+                max = Vector3.Max(max, p);
+            }
+            return new Vector3((min.x + max.x) * 0.5f, points[0].y, (min.z + max.z) * 0.5f);
         }
 
         public void MarkPlanted(Vector3 p) => Planted.Add(p);

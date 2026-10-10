@@ -127,12 +127,12 @@
 
   <!-- Thunderstore does not show relative images, so the packaged README links to hosted copies. -->
   <ItemGroup>
-    <ReadmeImage Include="images/preview-1-planted-circle.jpg" Url="https://i.postimg.cc/L5bcrjfx/preview-1-planted-circle.jpg" />
-    <ReadmeImage Include="images/preview-2-circle-hollow.jpg" Url="https://i.postimg.cc/Hnhqfb5P/preview-2-circle-hollow.jpg" />
-    <ReadmeImage Include="images/preview-3-curve.jpg" Url="https://i.postimg.cc/MHFCh1RF/preview-3-curve.jpg" />
-    <ReadmeImage Include="images/preview-4-settings-window.jpg" Url="https://i.postimg.cc/d3xbzGdz/preview-4-settings-window.jpg" />
-    <ReadmeImage Include="images/preview-5-two-curves.jpg" Url="https://i.postimg.cc/PJRgB1Zc/preview-5-two-curves.jpg" />
-    <ReadmeImage Include="images/preview-6-settings-wheel.jpg" Url="https://i.postimg.cc/hv5kHVTF/preview-6-settings-wheel.jpg" />
+    <ReadmeImage Include="images/preview-1-planted-circle.jpg" Url="https://i.postimg.cc/SxfnpKTT/preview-1-planted-circle.jpg" />
+    <ReadmeImage Include="images/preview-2-circle-hollow.jpg" Url="https://i.postimg.cc/W1wdP4YR/preview-2-circle-hollow.jpg" />
+    <ReadmeImage Include="images/preview-3-curve.jpg" Url="https://i.postimg.cc/mgyPGrpW/preview-3-curve.jpg" />
+    <ReadmeImage Include="images/preview-4-settings-window.jpg" Url="https://i.postimg.cc/Mpmn8G38/preview-4-settings-window.jpg" />
+    <ReadmeImage Include="images/preview-5-two-curves.jpg" Url="https://i.postimg.cc/jS4Drj3T/preview-5-two-curves.jpg" />
+    <ReadmeImage Include="images/preview-6-settings-wheel.jpg" Url="https://i.postimg.cc/mgyPGrpB/preview-6-settings-wheel.jpg" />
   </ItemGroup>
 
   <!-- Copies README.md with each local image path swapped for its hosted URL. -->

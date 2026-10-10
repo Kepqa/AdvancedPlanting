@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.5
+
+- Mod page and package description cover only the mod.
+
 ## 0.4.4
 
 - Translations: Ukrainian, German, French, Spanish, Portuguese (Brazil), Polish, Chinese (Simplified), Japanese.

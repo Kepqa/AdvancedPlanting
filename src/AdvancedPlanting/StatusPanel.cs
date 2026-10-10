@@ -45,10 +45,18 @@ namespace AdvancedPlanting
                 _sb.Append(plugin.ResourceLine()).Append('\n');
             }
 
-            _sb.Append("<color=#ffe08a>").Append(plugin.NextActionHint()).Append("</color>");
-            if (state.AutoContinue) _sb.Append("\n<color=#a0d0ff>").Append(Loc.T("panel.auto")).Append("</color>");
-            _sb.Append("\n<size=11><color=#a0a0a0>[").Append(plugin.WheelKeyName).Append("] ").Append(Loc.T("hint.wheel")).Append("</color></size>");
+            if (!plugin.KeyHintsShowing)
+            {
+                // Fallback when the game's key hints are turned off in its settings.
+                _sb.Append("<color=#ffe08a>").Append(plugin.NextActionHint()).Append("</color>\n");
+                string finish = plugin.FinishHint();
+                if (finish != null) _sb.Append("<color=#ffe08a>").Append(finish).Append("</color>\n");
+                _sb.Append("<size=11><color=#a0a0a0>[").Append(plugin.WheelKeyName).Append("] ").Append(Loc.T("hint.wheel")).Append("</color></size>\n");
+            }
+            if (state.AutoContinue) _sb.Append("<color=#a0d0ff>").Append(Loc.T("panel.auto")).Append("</color>");
+            if (_sb.Length > 0 && _sb[_sb.Length - 1] == '\n') _sb.Length--;
 
+            if (_sb.Length == 0) return;
             var content = new GUIContent(_sb.ToString());
             Vector2 size = _textStyle.CalcSize(content);
             var rect = new Rect(_config.HudX.Value, _config.HudY.Value, size.x + 20f, size.y + 16f);

@@ -70,6 +70,7 @@ msg.left.seeds = (out of seeds)
 msg.left.tool = (tool broken)
 msg.blocked = , {0} blocked ({1})
 msg.too_large = Figure too large: {0} m (limit {1} m)
+msg.window_unavailable = Settings window unavailable, see BepInEx log
 msg.complete = Figure complete: {0} plants
 
 hint.plant = Plant {0}

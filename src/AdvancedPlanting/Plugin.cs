@@ -14,7 +14,7 @@ namespace AdvancedPlanting
     {
         public const string PluginGuid = "kepqa.AdvancedPlanting";
         public const string PluginName = "AdvancedPlanting";
-        public const string PluginVersion = "0.2.1";
+        public const string PluginVersion = "0.3.0";
         public const string PluginAuthor = "kepqa";
 
         public static Plugin Instance { get; private set; }
@@ -29,6 +29,7 @@ namespace AdvancedPlanting
         private GhostPool _ghosts;
         private CurveRenderer _overlay;
         private StatusPanel _panel;
+        private BuildKeyHints _keyHints;
         private Harmony _harmony;
 
         private float _nextRevalidate;
@@ -66,6 +67,7 @@ namespace AdvancedPlanting
             _ghosts = new GhostPool();
             _overlay = new CurveRenderer(Settings);
             _panel = new StatusPanel(Settings);
+            _keyHints = new BuildKeyHints();
 
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll(typeof(Plugin).Assembly);
@@ -77,6 +79,7 @@ namespace AdvancedPlanting
             _harmony?.UnpatchSelf();
             _ghosts?.DestroyRoots();
             _overlay?.Destroy();
+            Window?.Destroy();
             Instance = null;
         }
 
@@ -130,6 +133,18 @@ namespace AdvancedPlanting
 
         public string WheelKeyName => Settings.WheelKey.Value.ToString();
 
+        /// <summary>Figure hints belong on screen: figure mode with a seed and no window open.</summary>
+        public bool ShowsFigureHints => FigureModeActive && !Window.IsOpen;
+
+        /// <summary>The vanilla key hints carry our rows; the panel then skips its own hint lines.</summary>
+        public bool KeyHintsShowing { get; private set; }
+
+        internal void KeyHintsUpdated(KeyHints hints)
+        {
+            _keyHints.Update(hints, this);
+            KeyHintsShowing = _keyHints.Available && hints.m_keyHintsEnabled && ShowsFigureHints;
+        }
+
         public void SetFigureMode(bool on)
         {
             if (State.Enabled == on) return;
@@ -153,6 +168,7 @@ namespace AdvancedPlanting
                 HidePreview();
                 return;
             }
+            Window.Update();
             HandleWheelKey();
             if (!State.Enabled)
             {
@@ -533,7 +549,6 @@ namespace AdvancedPlanting
         private void OnGUI()
         {
             if (!HasPlantContext) return;
-            Window.OnGUI();
             if (Window.IsOpen || !State.Enabled) return;
             if (global::Hud.InRadial()) return;
             if (global::Hud.IsPieceSelectionVisible()) return;

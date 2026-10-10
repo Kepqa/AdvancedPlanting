@@ -68,6 +68,7 @@ msg.left.seeds = (кончились семена)
 msg.left.tool = (инструмент сломан)
 msg.blocked = , {0} нельзя ({1})
 msg.too_large = Фигура слишком большая: {0} м (предел {1} м)
+msg.window_unavailable = Окно настроек недоступно, подробности в логе BepInEx
 msg.complete = Фигура готова: {0} растений
 
 hint.plant = Посадить {0}

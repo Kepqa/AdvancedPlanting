@@ -100,3 +100,17 @@ namespace AdvancedPlanting.Patches
         }
     }
 }
+
+namespace AdvancedPlanting.Patches
+{
+    /// <summary>Adds the figure hints to the vanilla build key hints every time they refresh.</summary>
+    [HarmonyLib.HarmonyPatch(typeof(KeyHints), nameof(KeyHints.UpdateHints))]
+    internal static class KeyHints_UpdateHints_Patch
+    {
+        [HarmonyLib.HarmonyPostfix]
+        private static void Postfix(KeyHints __instance)
+        {
+            Plugin.Instance?.KeyHintsUpdated(__instance);
+        }
+    }
+}

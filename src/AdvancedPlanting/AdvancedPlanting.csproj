@@ -25,7 +25,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>AdvancedPlanting</AssemblyName>
     <RootNamespace>AdvancedPlanting</RootNamespace>
-    <Version>0.2.1</Version>
+    <Version>0.3.0</Version>
     <Authors>kepqa</Authors>
     <Company>kepqa</Company>
     <Copyright>Copyright (c) 2026 kepqa</Copyright>
@@ -73,6 +73,18 @@
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule" Private="false">
       <HintPath>$(ManagedPath)/UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+    <Reference Include="assembly_guiutils" Publicize="true" Private="false">
+      <HintPath>$(ManagedPath)/assembly_guiutils.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI" Private="false">
+      <HintPath>$(ManagedPath)/UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule" Private="false">
+      <HintPath>$(ManagedPath)/UnityEngine.UIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro" Private="false">
+      <HintPath>$(ManagedPath)/Unity.TextMeshPro.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx" Private="false">
       <HintPath>$(BepInExCorePath)/BepInEx.dll</HintPath>

@@ -16,7 +16,6 @@ namespace AdvancedPlanting
     /// override them or add new languages, so translators need no build tools.
     ///
     /// Lookup order: current game language, then English, then the key itself.
-    /// The game's own Localization class lives in assembly_guiutils and is reached by reflection.
     /// </summary>
     public static class Loc
     {
@@ -31,9 +30,6 @@ namespace AdvancedPlanting
         private static float _nextLanguageCheck;
         private static bool _loaded;
 
-        private static PropertyInfo _locInstance;
-        private static MethodInfo _getSelectedLanguage;
-        private static bool _reflectionResolved;
 
         /// <summary>Current game language name, e.g. "English" or "Russian".</summary>
         public static string Language
@@ -146,28 +142,12 @@ namespace AdvancedPlanting
         {
             try
             {
-                if (!_reflectionResolved)
-                {
-                    _reflectionResolved = true;
-                    foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
-                    {
-                        Type t = asm.GetType("Localization", false);
-                        if (t == null) continue;
-                        _locInstance = t.GetProperty("instance", BindingFlags.Public | BindingFlags.Static);
-                        _getSelectedLanguage = t.GetMethod("GetSelectedLanguage", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
-                        break;
-                    }
-                }
-                object loc = _locInstance?.GetValue(null, null);
-                if (loc != null && _getSelectedLanguage != null)
-                {
-                    string lang = _getSelectedLanguage.Invoke(loc, null) as string;
-                    if (!string.IsNullOrEmpty(lang)) return lang;
-                }
+                string lang = Localization.instance?.GetSelectedLanguage();
+                if (!string.IsNullOrEmpty(lang)) return lang;
             }
             catch (Exception)
             {
-                // Fall through to the stored preference.
+                // Localization not ready yet; fall through to the stored preference.
             }
             return PlayerPrefs.GetString("language", Fallback);
         }

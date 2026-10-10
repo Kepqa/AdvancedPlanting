@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Settings window rebuilt from the game's own UI (inventory panel background, buttons, toggles and sliders), so it matches Valheim and scales with the game's UI.
+- Figure hints in the standard key-hint list at the bottom right while building; the status panel keeps them only when key hints are off in the game settings.
+- Circle is drawn with two clicks: centre, then edge.
+- MaxFigureSize setting (default 80 m): figures larger than this are not laid out at all, are shown as a red outline, and clicks that would exceed it are refused, so a stray click can no longer freeze the game.
+- Much faster preview: offset rows use a spatial grid and a coarse curve (worst case 180 ms -> 10 ms per rebuild), fill rows stop at the plant cap, rebuilds are throttled to 80 ms, game-rule checks are spread over frames, ghosts are created gradually, and the preview is redrawn only when something changed.
+- Uses the game's localization API directly for the language and key names.
+
 ## 0.2.1
 
 - Planting wheel moved to its own key (B by default, configurable). The vanilla radial key works as before.

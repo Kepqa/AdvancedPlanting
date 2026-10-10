@@ -16,7 +16,7 @@ namespace AdvancedPlanting
     {
         public const string PluginGuid = "kepqa.AdvancedPlanting";
         public const string PluginName = "AdvancedPlanting";
-        public const string PluginVersion = "0.4.5";
+        public const string PluginVersion = "0.4.6";
         public const string PluginAuthor = "kepqa";
 
         public static Plugin Instance { get; private set; }
@@ -117,6 +117,13 @@ namespace AdvancedPlanting
 
         /// <summary>Figure mode is on and a seed is selected.</summary>
         private bool FigureModeActive => State.Enabled && HasPlantContext;
+
+        /// <summary>Stamina per plant scaled by StaminaCostFactor, for the local player in figure mode.</summary>
+        public float ScaleBuildStamina(Player player, float stamina)
+        {
+            if (player != _player || !FigureModeActive) return stamina;
+            return stamina * Settings.StaminaCostFactor.Value;
+        }
 
         /// <summary>True only during our own call to open the radial menu.</summary>
         public bool OpeningWheel { get; private set; }

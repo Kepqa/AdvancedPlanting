@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.6
+
+- New setting StaminaCostFactor: stamina per plant in figure mode, default 0.5 (half of vanilla).
+- MaxPlants default raised from 300 to 500. Existing config files keep their value.
+- README lists both settings.
+
 ## 0.4.5
 
 - Mod page and package description cover only the mod.

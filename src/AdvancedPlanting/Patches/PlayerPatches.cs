@@ -15,6 +15,21 @@ namespace AdvancedPlanting.Patches
     }
 
     /// <summary>
+    /// Stamina per placement. Vanilla pays the first plant of a figure with it and the mod pays
+    /// every other plant with it too, so scaling it here covers the whole figure and auto-continue.
+    /// </summary>
+    [HarmonyPatch(typeof(Player), nameof(Player.GetBuildStamina))]
+    internal static class Player_GetBuildStamina_Patch
+    {
+        [HarmonyPostfix]
+        private static void Postfix(Player __instance, ref float __result)
+        {
+            Plugin plugin = Plugin.Instance;
+            if (plugin != null) __result = plugin.ScaleBuildStamina(__instance, __result);
+        }
+    }
+
+    /// <summary>
     /// The click handler in Player.UpdatePlacement calls TryPlacePiece and, when it returns
     /// true, pays for one placement. With a finished figure we plant the whole figure instead
     /// (paying for every plant beyond the first ourselves) and skip the vanilla single placement.

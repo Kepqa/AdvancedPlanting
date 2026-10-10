@@ -25,7 +25,10 @@
     <Nullable>disable</Nullable>
     <AssemblyName>AdvancedPlanting</AssemblyName>
     <RootNamespace>AdvancedPlanting</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
+    <Authors>kepqa</Authors>
+    <Company>kepqa</Company>
+    <Copyright>Copyright (c) 2026 kepqa</Copyright>
     <Deterministic>true</Deterministic>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>

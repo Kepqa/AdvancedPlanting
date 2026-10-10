@@ -12,6 +12,8 @@ namespace AdvancedPlanting
         public PointStatus Status;
         public int Row;
         public bool IsValid => Status == PointStatus.Valid;
+        public bool IsPlanted => Status == PointStatus.Planted;
+        public bool IsBlocked => Status != PointStatus.Valid && Status != PointStatus.Planted;
     }
 
     /// <summary>
@@ -25,7 +27,15 @@ namespace AdvancedPlanting
         public readonly List<PlantSlot> Slots = new List<PlantSlot>();
         public readonly List<List<Vector3>> RowLines = new List<List<Vector3>>();
         public bool Truncated { get; private set; }
+        /// <summary>Slots that can be planted right now.</summary>
         public int ValidCount { get; private set; }
+        public int PlantedCount { get; private set; }
+        public int BlockedCount => Slots.Count - ValidCount - PlantedCount;
+
+        /// <summary>Control points the current slots were built from, including the cursor while drawing.</summary>
+        public readonly List<Vector3> PreviewPoints = new List<Vector3>();
+
+        private const float PlantedTolerance = 0.2f;
         public int RejectedByDistance { get; private set; }
 
         /// <summary>Plant prefab the current slots were built for.</summary>
@@ -54,18 +64,39 @@ namespace AdvancedPlanting
         {
             Slots.Clear();
             RowLines.Clear();
+            PreviewPoints.Clear();
+            PlantedCount = 0;
             Truncated = false;
             ValidCount = 0;
             RejectedByDistance = 0;
             BuiltForPrefab = null;
         }
 
-        /// <summary>Full rebuild: geometry, heights and validation.</summary>
-        public void Rebuild(FigureState state, Piece piece, Plant plant, string prefabName, Player player)
+        /// <summary>
+        /// Full rebuild: geometry, heights and validation. While the figure is still being drawn,
+        /// <paramref name="cursor"/> is used as the next control point, so the player sees the
+        /// shape before committing to the click.
+        /// </summary>
+        public void Rebuild(FigureState state, Vector3? cursor, Piece piece, Plant plant, string prefabName, Player player)
         {
             Clear();
             BuiltForPrefab = prefabName;
-            if (!state.HasEnoughPoints) return;
+            PreviewPoints.AddRange(state.ControlPoints);
+            int max = state.Mode.MaxControlPoints();
+            if (!state.Finished && cursor.HasValue && (max == 0 || PreviewPoints.Count < max))
+                PreviewPoints.Add(cursor.Value);
+            if (PreviewPoints.Count < state.Mode.MinControlPoints())
+            {
+                // Not a figure yet (e.g. the first two points of an arc): draw a plain guide line
+                // through the points and the cursor so the player still sees where it goes.
+                if (PreviewPoints.Count >= 2)
+                {
+                    var helper = new List<Vector3>();
+                    foreach (Vector3 p in PreviewPoints) helper.Add(p + Vector3.up * 0.15f);
+                    RowLines.Add(helper);
+                }
+                return;
+            }
 
             float spacing = state.GetSpacing(prefabName, DefaultSpacing(plant));
             var request = new LayoutRequest
@@ -82,17 +113,23 @@ namespace AdvancedPlanting
                 WarpScale = _config.WarpScale.Value,
                 MaxPoints = _config.MaxPlants.Value,
             };
-            foreach (Vector3 p in state.ControlPoints) request.ControlPoints.Add(new Vec2(p.x, p.z));
+            foreach (Vector3 p in PreviewPoints) request.ControlPoints.Add(new Vec2(p.x, p.z));
 
             LayoutResult layout = PlantingLayout.Generate(request);
             Truncated = layout.Truncated;
             RejectedByDistance = layout.Rejected;
 
-            float fallbackY = state.ControlPoints[0].y;
+            float fallbackY = PreviewPoints[0].y;
             foreach (LayoutPoint lp in layout.Points)
             {
                 var slot = new PlantSlot { Row = lp.Row };
-                if (!PlacementValidator.TryGetGroundHeight(lp.Position.X, lp.Position.Z, out float h))
+                var flat = new Vector3(lp.Position.X, fallbackY, lp.Position.Z);
+                if (state.IsPlanted(flat, PlantedTolerance))
+                {
+                    slot.Position = PlacementValidator.TryGetGroundHeight(flat.x, flat.z, out float ph) ? new Vector3(flat.x, ph, flat.z) : flat;
+                    slot.Status = PointStatus.Planted;
+                }
+                else if (!PlacementValidator.TryGetGroundHeight(lp.Position.X, lp.Position.Z, out float h))
                 {
                     slot.Position = new Vector3(lp.Position.X, fallbackY, lp.Position.Z);
                     slot.Status = PointStatus.NoGround;
@@ -111,12 +148,18 @@ namespace AdvancedPlanting
         }
 
         /// <summary>Cheap pass: re-check ground rules without regenerating geometry.</summary>
-        public void Revalidate(Piece piece, Plant plant, Player player)
+        public void Revalidate(FigureState state, Piece piece, Plant plant, Player player)
         {
             for (int i = 0; i < Slots.Count; i++)
             {
                 PlantSlot slot = Slots[i];
-                if (slot.Status == PointStatus.NoGround) continue;
+                if (slot.Status == PointStatus.NoGround || slot.Status == PointStatus.Planted) continue;
+                if (state.IsPlanted(slot.Position, PlantedTolerance))
+                {
+                    slot.Status = PointStatus.Planted;
+                    Slots[i] = slot;
+                    continue;
+                }
                 slot.Status = PlacementValidator.Check(slot.Position, piece, plant, player);
                 Slots[i] = slot;
             }
@@ -126,15 +169,17 @@ namespace AdvancedPlanting
         /// <summary>Most frequent reason a slot is blocked, for the status panel.</summary>
         public PointStatus TopBlockReason { get; private set; }
 
-        private readonly int[] _statusCounts = new int[16];
+        private readonly int[] _statusCounts = new int[32];
 
         private void CountStatuses()
         {
             System.Array.Clear(_statusCounts, 0, _statusCounts.Length);
             ValidCount = 0;
+            PlantedCount = 0;
             foreach (PlantSlot s in Slots)
             {
                 if (s.IsValid) ValidCount++;
+                else if (s.IsPlanted) PlantedCount++;
                 else _statusCounts[(int)s.Status]++;
             }
             int best = 0;

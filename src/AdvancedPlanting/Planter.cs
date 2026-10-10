@@ -10,7 +10,8 @@ namespace AdvancedPlanting
     /// Vanilla flow (Player.UpdatePlacement): check stamina and requirements once, call
     /// TryPlacePiece, and if it returns true pay once: resources, stamina, tool durability, skill.
     /// We replace TryPlacePiece. The first plant is paid by that vanilla code after we return true;
-    /// every additional plant is paid here, immediately, with the same formulas.
+    /// every additional plant is paid here, immediately, with the same formulas. Auto-continue
+    /// runs outside that flow and pays for every plant here.
     /// </summary>
     public static class Planter
     {
@@ -23,7 +24,16 @@ namespace AdvancedPlanting
             public bool ToolBroken;
         }
 
-        public static Outcome Plant(Player player, Piece piece, List<PlantSlot> slots)
+        /// <summary>
+        /// Plants valid slots, nearest to the player first.
+        /// </summary>
+        /// <param name="vanillaPaysFirst">
+        /// True when called from TryPlacePiece: vanilla pays for the first plant after we return.
+        /// False for auto-continue, where nothing in vanilla pays, so every plant is paid here.
+        /// </param>
+        /// <param name="limit">Maximum plants to place in this call.</param>
+        /// <param name="onPlanted">Receives the position of every plant placed.</param>
+        public static Outcome Plant(Player player, Piece piece, List<PlantSlot> slots, bool vanillaPaysFirst, int limit, Action<Vector3> onPlanted)
         {
             var outcome = new Outcome();
             ItemDrop.ItemData tool = player.GetRightItem();
@@ -35,28 +45,35 @@ namespace AdvancedPlanting
                 && !PlayerProfile.s_bypassCheatChecks;
             float stamina = player.GetBuildStamina();
 
-            // One planting sound for the whole figure instead of hundreds stacked on each other.
+            var order = new List<int>(slots.Count);
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if (slots[i].IsValid) order.Add(i);
+                else if (slots[i].IsBlocked) outcome.Blocked++;
+            }
+            Vector3 origin = player.transform.position;
+            order.Sort((a, b) => SqrFlat(slots[a].Position, origin).CompareTo(SqrFlat(slots[b].Position, origin)));
+
+            // One planting sound for the whole batch instead of hundreds stacked on each other.
             EffectList placeEffect = piece.m_placeEffect;
             try
             {
-                for (int i = 0; i < slots.Count; i++)
+                foreach (int index in order)
                 {
-                    PlantSlot slot = slots[i];
-                    if (!slot.IsValid)
-                    {
-                        outcome.Blocked++;
-                        continue;
-                    }
+                    if (outcome.Planted >= limit) break;
+                    PlantSlot slot = slots[index];
 
-                    if (outcome.Planted > 0)
+                    bool paidByVanilla = vanillaPaysFirst && outcome.Planted == 0;
+                    if (!paidByVanilla)
                     {
-                        // Keep one set of seeds and the stamina for the plant vanilla pays for.
-                        if (!free && !HaveResources(player, piece, 2))
+                        // When vanilla still owes the first plant, keep its seeds and stamina in reserve.
+                        int reserve = vanillaPaysFirst ? 1 : 0;
+                        if (!free && !HaveResources(player, piece, 1 + reserve))
                         {
                             outcome.OutOfSeeds = true;
                             break;
                         }
-                        if (!player.HaveStamina(stamina * 2f))
+                        if (!player.HaveStamina(stamina * (1 + reserve)))
                         {
                             outcome.OutOfStamina = true;
                             break;
@@ -66,13 +83,14 @@ namespace AdvancedPlanting
                             outcome.ToolBroken = true;
                             break;
                         }
-                        PayForExtraPlant(player, piece, tool, free, stamina);
-                        piece.m_placeEffect = EmptyEffects;
+                        PayForPlant(player, piece, tool, free, stamina);
                     }
 
+                    piece.m_placeEffect = outcome.Planted == 0 ? placeEffect : EmptyEffects;
                     player.PlacePiece(piece, slot.Position, slot.Rotation, outcome.Planted == 0, cheated);
                     CountStats(piece, cheated);
                     outcome.Planted++;
+                    onPlanted?.Invoke(slot.Position);
                 }
             }
             catch (Exception e)
@@ -84,6 +102,24 @@ namespace AdvancedPlanting
                 piece.m_placeEffect = placeEffect;
             }
             return outcome;
+        }
+
+        private static float SqrFlat(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x, dz = a.z - b.z;
+            return dx * dx + dz * dz;
+        }
+
+        /// <summary>Whether one more plant can be paid for right now (seeds, stamina, tool).</summary>
+        public static bool CanAffordOne(Player player, Piece piece)
+        {
+            ItemDrop.ItemData tool = player.GetRightItem();
+            if (tool == null) return false;
+            bool free = player.m_noPlacementCost
+                || (ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey()));
+            if (!free && !HaveResources(player, piece, 1)) return false;
+            if (tool.m_shared.m_useDurability && tool.m_durability <= 0f) return false;
+            return player.HaveStamina(player.GetBuildStamina());
         }
 
         private static readonly EffectList EmptyEffects = new EffectList();
@@ -103,8 +139,8 @@ namespace AdvancedPlanting
             return true;
         }
 
-        /// <summary>Copy of what Player.UpdatePlacement does after a successful TryPlacePiece.</summary>
-        private static void PayForExtraPlant(Player player, Piece piece, ItemDrop.ItemData tool, bool free, float stamina)
+        /// <summary>Copy of what Player.UpdatePlacement pays after a successful TryPlacePiece.</summary>
+        private static void PayForPlant(Player player, Piece piece, ItemDrop.ItemData tool, bool free, float stamina)
         {
             if (!free) player.ConsumeResources(piece.m_resources, 0);
             player.UseStamina(stamina);

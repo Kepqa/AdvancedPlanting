@@ -16,6 +16,8 @@ namespace AdvancedPlanting
         DeepSnow,
         InWater,
         NoSpace,
+        /// <summary>Already planted by this figure; not a problem, just done.</summary>
+        Planted,
     }
 
     /// <summary>
@@ -134,6 +136,7 @@ namespace AdvancedPlanting
                 case PointStatus.DeepSnow: return "deep snow";
                 case PointStatus.InWater: return "in water";
                 case PointStatus.NoSpace: return "no space";
+                case PointStatus.Planted: return "planted";
                 default: return status.ToString();
             }
         }

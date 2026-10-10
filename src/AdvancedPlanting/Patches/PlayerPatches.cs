@@ -1,4 +1,5 @@
 using HarmonyLib;
+using UnityEngine;
 
 namespace AdvancedPlanting.Patches
 {
@@ -15,7 +16,7 @@ namespace AdvancedPlanting.Patches
 
     /// <summary>
     /// The click handler in Player.UpdatePlacement calls TryPlacePiece and, when it returns
-    /// true, pays for one placement. With a figure active we plant the whole figure instead
+    /// true, pays for one placement. With a finished figure we plant the whole figure instead
     /// (paying for every plant beyond the first ourselves) and skip the vanilla single placement.
     /// </summary>
     [HarmonyPatch(typeof(Player), nameof(Player.TryPlacePiece))]
@@ -33,24 +34,37 @@ namespace AdvancedPlanting.Patches
     }
 
     /// <summary>
-    /// Vanilla rotates the ghost with the mouse wheel. While our modifier is held the wheel
-    /// edits a figure parameter, so the rotation change is undone.
+    /// While a figure is being drawn, a left click adds a control point instead of planting.
+    /// The click is consumed by making vanilla believe the tool was just used, then the
+    /// pending press is discarded so it cannot fire a frame later.
     /// </summary>
     [HarmonyPatch(typeof(Player), nameof(Player.UpdatePlacement))]
     internal static class Player_UpdatePlacement_Patch
     {
-        [HarmonyPrefix]
-        private static void Prefix(Player __instance, out int __state)
+        internal struct ClickState
         {
-            __state = __instance.m_placeRotation;
+            public bool Consumed;
+            public float LastToolUseTime;
+        }
+
+        [HarmonyPrefix]
+        private static void Prefix(Player __instance, bool takeInput, out ClickState __state)
+        {
+            __state = default;
+            Plugin plugin = Plugin.Instance;
+            if (plugin == null || !takeInput) return;
+            if (!plugin.HandlePlacementClick(__instance)) return;
+            __state.Consumed = true;
+            __state.LastToolUseTime = __instance.m_lastToolUseTime;
+            __instance.m_lastToolUseTime = Time.time;
         }
 
         [HarmonyPostfix]
-        private static void Postfix(Player __instance, bool takeInput, int __state)
+        private static void Postfix(Player __instance, ClickState __state)
         {
-            Plugin plugin = Plugin.Instance;
-            if (plugin == null || !takeInput) return;
-            if (plugin.HandleScroll(__instance)) __instance.m_placeRotation = __state;
+            if (!__state.Consumed) return;
+            __instance.m_lastToolUseTime = __state.LastToolUseTime;
+            __instance.m_placePressedTime = -9999f;
         }
     }
 }

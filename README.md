@@ -4,6 +4,8 @@ Made by **kepqa** with **Claude Code**.
 
 Plant along lines, arcs, circles, curves and filled shapes.
 
+![A planted multi-row circle](SCREENSHOT_1)
+
 ## Features
 
 - Five path types: line, arc, circle, curve, shape.
@@ -14,6 +16,12 @@ Plant along lines, arcs, circles, curves and filled shapes.
 - Partial planting when stamina runs out; optional auto-continue.
 - Client-side only.
 - Incompatible with other planting mods.
+
+![Circle, 4 rows, hollow centre](SCREENSHOT_2)
+
+![Curve, 3 rows](SCREENSHOT_3)
+
+![Two nested curves](SCREENSHOT_5)
 
 ## Controls
 
@@ -28,13 +36,12 @@ Plant along lines, arcs, circles, curves and filled shapes.
 
 Keys are configurable in `BepInEx/config/kepqa.AdvancedPlanting.cfg`.
 
+![Planting menu](SCREENSHOT_6)
+
+![Settings window](SCREENSHOT_4)
+
 ## Translations
 
 - Files: `Translations/<Language>.txt`, `key = value`.
 - Included: English, Russian.
 - New language: copy `English.txt`, rename to the game's language name.
-
-## Building
-
-- Set `ValheimPath` in `src/AdvancedPlanting/Local.props`.
-- `dotnet build src/AdvancedPlanting -c Release` builds the DLL and the Thunderstore package in `dist/`.

@@ -125,6 +125,39 @@
     <PackageZip>$(RepoRoot)dist/kepqa-$(ThunderstoreName)-$(Version).zip</PackageZip>
   </PropertyGroup>
 
+  <!-- Thunderstore does not show relative images, so the packaged README links to hosted copies. -->
+  <ItemGroup>
+    <ReadmeImage Include="images/preview-1-planted-circle.jpg" Url="https://i.postimg.cc/L5bcrjfx/preview-1-planted-circle.jpg" />
+    <ReadmeImage Include="images/preview-2-circle-hollow.jpg" Url="https://i.postimg.cc/Hnhqfb5P/preview-2-circle-hollow.jpg" />
+    <ReadmeImage Include="images/preview-3-curve.jpg" Url="https://i.postimg.cc/MHFCh1RF/preview-3-curve.jpg" />
+    <ReadmeImage Include="images/preview-4-settings-window.jpg" Url="https://i.postimg.cc/d3xbzGdz/preview-4-settings-window.jpg" />
+    <ReadmeImage Include="images/preview-5-two-curves.jpg" Url="https://i.postimg.cc/PJRgB1Zc/preview-5-two-curves.jpg" />
+    <ReadmeImage Include="images/preview-6-settings-wheel.jpg" Url="https://i.postimg.cc/hv5kHVTF/preview-6-settings-wheel.jpg" />
+  </ItemGroup>
+
+  <!-- Copies README.md with each local image path swapped for its hosted URL. -->
+  <UsingTask TaskName="PackageReadme" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Source Required="true" />
+      <Destination Required="true" />
+      <Images ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        string text = System.IO.File.ReadAllText(Source);
+        foreach (var image in Images)
+          text = text.Replace("](" + image.ItemSpec + ")", "](" + image.GetMetadata("Url") + ")");
+        if (text.Contains("](images/"))
+        {
+          Log.LogError("README.md has an image without a hosted URL in ReadmeImage.");
+          return false;
+        }
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Destination));
+        System.IO.File.WriteAllText(Destination, text);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
   <Target Name="ThunderstorePackage" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
     <ItemGroup>
       <PackageTranslations Include="$(OutDir)Translations/*.txt" />
@@ -139,7 +172,8 @@
     <RemoveDir Directories="$(PackageStaging)" />
     <MakeDir Directories="$(PackageStaging)Translations" />
     <WriteLinesToFile File="$(PackageStaging)manifest.json" Lines="@(ManifestLines)" Overwrite="true" Encoding="us-ascii" /><!-- Thunderstore rejects a UTF-8 BOM; the manifest is plain ASCII -->
-    <Copy SourceFiles="$(RepoRoot)thunderstore/icon.png;$(RepoRoot)README.md;$(RepoRoot)CHANGELOG.md" DestinationFolder="$(PackageStaging)" />
+    <Copy SourceFiles="$(RepoRoot)thunderstore/icon.png;$(RepoRoot)CHANGELOG.md" DestinationFolder="$(PackageStaging)" />
+    <PackageReadme Source="$(RepoRoot)README.md" Destination="$(PackageStaging)README.md" Images="@(ReadmeImage)" />
     <Copy SourceFiles="$(OutDir)AdvancedPlanting.dll;$(OutDir)AdvancedPlanting.Core.dll" DestinationFolder="$(PackageStaging)" />
     <Copy SourceFiles="@(PackageTranslations)" DestinationFolder="$(PackageStaging)Translations" />
     <Delete Files="$(PackageZip)" />

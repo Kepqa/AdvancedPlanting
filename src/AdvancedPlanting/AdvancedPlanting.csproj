@@ -25,7 +25,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>AdvancedPlanting</AssemblyName>
     <RootNamespace>AdvancedPlanting</RootNamespace>
-    <Version>0.4.1</Version>
+    <Version>0.4.2</Version>
     <Authors>kepqa</Authors>
     <Company>kepqa</Company>
     <Copyright>Copyright (c) 2026 kepqa</Copyright>
@@ -117,9 +117,9 @@
   -->
   <PropertyGroup>
     <ThunderstoreName>AdvancedPlanting</ThunderstoreName>
-    <ThunderstoreDescription>Plant along lines, arcs, circles, curves and filled shapes, with rows, natural jitter and a live preview. Every plant costs what vanilla charges.</ThunderstoreDescription>
+    <ThunderstoreDescription>Plant along lines, arcs, circles, curves and filled shapes. Rows, jitter, live preview, vanilla costs. By kepqa, made with Claude Code.</ThunderstoreDescription>
     <ThunderstoreWebsite></ThunderstoreWebsite>
-    <ThunderstoreDependency>denikson-BepInExPack_Valheim-5.4.2202</ThunderstoreDependency>
+    <ThunderstoreDependency>denikson-BepInExPack_Valheim-5.4.2351</ThunderstoreDependency>
     <RepoRoot>$(MSBuildThisFileDirectory)../../</RepoRoot>
     <PackageStaging>$(RepoRoot)dist/package/</PackageStaging>
     <PackageZip>$(RepoRoot)dist/kepqa-$(ThunderstoreName)-$(Version).zip</PackageZip>

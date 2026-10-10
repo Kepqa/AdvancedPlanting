@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2
+
+- Shorter README and package description; credits: by kepqa, made with Claude Code.
+- Depends on BepInExPack_Valheim 5.4.2351.
+
 ## 0.4.1
 
 - Fix: the 0.4.0 package kept the DLLs in a nested plugins/ folder, so the mod was not installed where BepInEx looks and did not load. DLLs are back at the package root.

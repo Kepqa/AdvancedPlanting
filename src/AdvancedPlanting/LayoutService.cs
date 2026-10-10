@@ -8,6 +8,8 @@ namespace AdvancedPlanting
     public struct PlantSlot
     {
         public Vector3 Position;
+        /// <summary>Ground normal at the position, for drawing the grow-radius ring on slopes.</summary>
+        public Vector3 Normal;
         public Quaternion Rotation;
         public PointStatus Status;
         public int Row;
@@ -105,6 +107,7 @@ namespace AdvancedPlanting
                 Spacing = spacing,
                 RowSpacing = spacing,
                 Rows = state.Rows,
+                Fill = state.Fill && state.IsClosedPath,
                 Side = state.Side,
                 Jitter = state.Jitter,
                 Thinning = state.Thinning,
@@ -122,14 +125,14 @@ namespace AdvancedPlanting
             float fallbackY = PreviewPoints[0].y;
             foreach (LayoutPoint lp in layout.Points)
             {
-                var slot = new PlantSlot { Row = lp.Row };
+                var slot = new PlantSlot { Row = lp.Row, Normal = Vector3.up };
                 var flat = new Vector3(lp.Position.X, fallbackY, lp.Position.Z);
                 if (state.IsPlanted(flat, PlantedTolerance))
                 {
-                    slot.Position = PlacementValidator.TryGetGroundHeight(flat.x, flat.z, out float ph) ? new Vector3(flat.x, ph, flat.z) : flat;
+                    slot.Position = PlacementValidator.TryGetGround(flat.x, flat.z, out float ph, out Vector3 pn) ? new Vector3(flat.x, ph, flat.z) : flat;
                     slot.Status = PointStatus.Planted;
                 }
-                else if (!PlacementValidator.TryGetGroundHeight(lp.Position.X, lp.Position.Z, out float h))
+                else if (!PlacementValidator.TryGetGround(lp.Position.X, lp.Position.Z, out float h, out Vector3 n))
                 {
                     slot.Position = new Vector3(lp.Position.X, fallbackY, lp.Position.Z);
                     slot.Status = PointStatus.NoGround;
@@ -137,6 +140,7 @@ namespace AdvancedPlanting
                 else
                 {
                     slot.Position = new Vector3(lp.Position.X, h, lp.Position.Z);
+                    slot.Normal = n;
                     slot.Status = PlacementValidator.Check(slot.Position, piece, plant, player);
                 }
                 slot.Rotation = RotationFor(slot.Position, state.Seed);

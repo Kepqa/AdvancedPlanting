@@ -32,19 +32,18 @@ namespace AdvancedPlanting
 
             if (layout.Slots.Count > 0)
             {
-                _sb.Append("<color=#90ee90>").Append(layout.ValidCount).Append(" to plant</color>");
-                if (layout.PlantedCount > 0) _sb.Append("   <color=#c8c8c8>").Append(layout.PlantedCount).Append(" planted</color>");
+                _sb.Append("<color=#90ee90>").Append(Loc.T("panel.to_plant", layout.ValidCount)).Append("</color>");
+                if (layout.PlantedCount > 0) _sb.Append("   <color=#c8c8c8>").Append(Loc.T("panel.planted", layout.PlantedCount)).Append("</color>");
                 if (layout.BlockedCount > 0)
-                    _sb.Append("   <color=#ff8080>").Append(layout.BlockedCount).Append(" blocked: ")
-                        .Append(PlacementValidator.Describe(layout.TopBlockReason)).Append("</color>");
-                if (layout.Truncated) _sb.Append("   <color=#ffd080>cap ").Append(_config.MaxPlants.Value).Append("</color>");
+                    _sb.Append("   <color=#ff8080>").Append(Loc.T("panel.blocked", layout.BlockedCount, PlacementValidator.Describe(layout.TopBlockReason))).Append("</color>");
+                if (layout.Truncated) _sb.Append("   <color=#ffd080>").Append(Loc.T("panel.cap", _config.MaxPlants.Value)).Append("</color>");
                 _sb.Append('\n');
                 _sb.Append(plugin.ResourceLine()).Append('\n');
             }
 
             _sb.Append("<color=#ffe08a>").Append(plugin.NextActionHint()).Append("</color>");
-            if (state.AutoContinue) _sb.Append("\n<color=#a0d0ff>Auto-continue is on</color>");
-            _sb.Append("\n<size=11><color=#a0a0a0>[").Append(plugin.RadialKeyName).Append("] planting wheel</color></size>");
+            if (state.AutoContinue) _sb.Append("\n<color=#a0d0ff>").Append(Loc.T("panel.auto")).Append("</color>");
+            _sb.Append("\n<size=11><color=#a0a0a0>[").Append(plugin.WheelKeyName).Append("] ").Append(Loc.T("hint.wheel")).Append("</color></size>");
 
             var content = new GUIContent(_sb.ToString());
             Vector2 size = _textStyle.CalcSize(content);
@@ -69,22 +68,23 @@ namespace AdvancedPlanting
         {
             switch (mode)
             {
-                case PathMode.Segment: return "Line";
-                case PathMode.Arc: return "Arc";
-                case PathMode.Circle: return "Circle";
-                case PathMode.Spline: return "Curve";
-                case PathMode.Contour: return "Shape fill";
+                case PathMode.Segment: return Loc.T("mode.line");
+                case PathMode.Arc: return Loc.T("mode.arc");
+                case PathMode.Circle: return Loc.T("mode.circle");
+                case PathMode.Spline: return Loc.T("mode.curve");
+                case PathMode.Contour: return Loc.T("mode.shape");
                 default: return mode.ToString();
             }
         }
 
-        public static string SideName(RowSide side)
+        /// <summary>For closed paths left and right read as inside and outside.</summary>
+        public static string SideName(RowSide side, bool closed)
         {
             switch (side)
             {
-                case RowSide.Both: return "both sides";
-                case RowSide.Left: return "left";
-                case RowSide.Right: return "right";
+                case RowSide.Both: return Loc.T("side.both");
+                case RowSide.Left: return Loc.T(closed ? "side.inside" : "side.left");
+                case RowSide.Right: return Loc.T(closed ? "side.outside" : "side.right");
                 default: return side.ToString();
             }
         }

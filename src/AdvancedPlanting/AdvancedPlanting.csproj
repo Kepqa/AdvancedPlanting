@@ -25,7 +25,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>AdvancedPlanting</AssemblyName>
     <RootNamespace>AdvancedPlanting</RootNamespace>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <Authors>kepqa</Authors>
     <Company>kepqa</Company>
     <Copyright>Copyright (c) 2026 kepqa</Copyright>
@@ -83,12 +83,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Built-in translations; copies next to the DLL let players edit or add languages. -->
+    <EmbeddedResource Include="Translations/*.txt" LogicalName="AdvancedPlanting.Translations.%(Filename).txt" />
+    <None Include="Translations/*.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../AdvancedPlanting.Core/AdvancedPlanting.Core.csproj" />
   </ItemGroup>
 
   <Target Name="CopyToGameFolder" AfterTargets="Build" Condition="'$(CopyToGame)' == 'true'">
     <MakeDir Directories="$(PluginOutputPath)" />
     <Copy SourceFiles="$(OutDir)AdvancedPlanting.dll;$(OutDir)AdvancedPlanting.Core.dll" DestinationFolder="$(PluginOutputPath)" />
+    <ItemGroup>
+      <TranslationFiles Include="$(OutDir)Translations/*.txt" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TranslationFiles)" DestinationFolder="$(PluginOutputPath)/Translations" />
     <Message Importance="high" Text="AdvancedPlanting copied to $(PluginOutputPath)" />
   </Target>
 

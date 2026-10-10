@@ -24,7 +24,7 @@ namespace AdvancedPlanting.UI
             _plugin = plugin;
         }
 
-        public string LocalizedName => "Planting";
+        public string LocalizedName => Loc.T("wheel.title");
 
         public Sprite Sprite => Icons.Curve;
 
@@ -33,51 +33,54 @@ namespace AdvancedPlanting.UI
             FigureState s = _plugin.State;
             var list = new List<RadialMenuElement>();
 
-            list.Add(Element(s.Enabled ? "Single plant" : "Single plant (current)", "Ordinary vanilla planting", Icons.Single, () =>
+            string single = Loc.T("wheel.single");
+            list.Add(Element(s.Enabled ? single : Loc.T("wheel.current", single), Loc.T("wheel.single.desc"), Icons.Single, () =>
             {
                 _plugin.SetFigureMode(false);
                 return true;
             }, close: true));
 
-            AddMode(list, PathMode.Segment, "Line", "2 points", Icons.Line);
-            AddMode(list, PathMode.Arc, "Arc", "Start, middle, end", Icons.Arc);
-            AddMode(list, PathMode.Circle, "Circle", "3 points on the circle", Icons.Circle);
-            AddMode(list, PathMode.Spline, "Curve", "Click the last point again to finish", Icons.Curve);
-            AddMode(list, PathMode.Contour, "Shape fill", "Click the first point to close", Icons.Shape);
+            AddMode(list, PathMode.Segment, "wheel.line.desc", Icons.Line);
+            AddMode(list, PathMode.Arc, "wheel.arc.desc", Icons.Arc);
+            AddMode(list, PathMode.Circle, "wheel.circle.desc", Icons.Circle);
+            AddMode(list, PathMode.Spline, "wheel.curve.desc", Icons.Curve);
+            AddMode(list, PathMode.Contour, "wheel.shape.desc", Icons.Shape);
 
-            list.Add(Element("Rows: " + StatusPanel.SideName(s.Side), "Which side of the path extra rows go", Icons.Side, () =>
+            list.Add(Element(Loc.T("wheel.side", StatusPanel.SideName(s.Side, s.IsClosedPath)), Loc.T("wheel.side.desc"), Icons.Side, () =>
             {
                 s.CycleSide();
                 radial.Refresh();
                 return true;
             }, close: false));
 
-            list.Add(Element("Undo point", s.IsEmpty ? "No points yet" : s.ControlPoints.Count + " point(s)", Icons.Undo, () =>
-            {
-                s.RemoveLastPoint();
-                return true;
-            }, close: true));
+            list.Add(Element(Loc.T(s.Fill ? "wheel.fill.on" : "wheel.fill.off"),
+                Loc.T(s.IsClosedPath ? "wheel.fill.desc" : "wheel.fill.na"), Icons.Fill, () =>
+                {
+                    s.SetFill(!s.Fill);
+                    radial.Refresh();
+                    return true;
+                }, close: false));
 
-            list.Add(Element("Clear figure", "Start over", Icons.Clear, () =>
+            list.Add(Element(Loc.T("wheel.undo"),
+                s.IsEmpty ? Loc.T("wheel.undo.none") : Loc.T("wheel.undo.count", s.ControlPoints.Count), Icons.Undo, () =>
+                {
+                    s.RemoveLastPoint();
+                    return true;
+                }, close: true));
+
+            list.Add(Element(Loc.T("wheel.clear"), Loc.T("wheel.clear.desc"), Icons.Clear, () =>
             {
                 s.Clear();
                 return true;
             }, close: true));
 
-            list.Add(Element(s.CanFinish ? "Finish figure" : "Finish figure (n/a)",
-                "Same as clicking the last point again", Icons.Finish, () =>
-                {
-                    s.Finish();
-                    return true;
-                }, close: true));
-
-            list.Add(Element("Reshuffle", "New random pattern for jitter and thinning", Icons.Reshuffle, () =>
+            list.Add(Element(Loc.T("wheel.reshuffle"), Loc.T("wheel.reshuffle.desc"), Icons.Reshuffle, () =>
             {
                 s.RerollSeed();
                 return true;
             }, close: false));
 
-            list.Add(Element("Settings...", "Spacing, rows, jitter, thinning, auto-continue", Icons.Settings, () =>
+            list.Add(Element(Loc.T("wheel.settings"), Loc.T("wheel.settings.desc"), Icons.Settings, () =>
             {
                 _plugin.Window.Open();
                 return true;
@@ -86,11 +89,12 @@ namespace AdvancedPlanting.UI
             radial.ConstructRadial(list);
         }
 
-        private void AddMode(List<RadialMenuElement> list, PathMode mode, string name, string hint, Sprite icon)
+        private void AddMode(List<RadialMenuElement> list, PathMode mode, string descKey, Sprite icon)
         {
             FigureState s = _plugin.State;
+            string name = StatusPanel.ModeName(mode);
             bool current = s.Enabled && s.Mode == mode;
-            list.Add(Element(current ? name + " (current)" : name, hint, icon, () =>
+            list.Add(Element(current ? Loc.T("wheel.current", name) : name, Loc.T(descKey), icon, () =>
             {
                 _plugin.SetFigureMode(true);
                 s.SetMode(mode);

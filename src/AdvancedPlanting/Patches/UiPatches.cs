@@ -5,8 +5,8 @@ using Valheim.UI;
 namespace AdvancedPlanting.Patches
 {
     /// <summary>
-    /// Vanilla blocks the radial menu in build mode, so the radial key does nothing while a seed
-    /// is selected. We lift that block only in that situation and show the planting wheel.
+    /// Vanilla blocks the radial menu in build mode. We lift that block only while opening the
+    /// planting wheel from its own key; the vanilla radial key keeps its vanilla behaviour.
     /// </summary>
     [HarmonyPatch(typeof(RadialBase), nameof(RadialBase.InRadialBlockingPlaceMode), MethodType.Getter)]
     internal static class RadialBase_InRadialBlockingPlaceMode_Patch
@@ -14,14 +14,14 @@ namespace AdvancedPlanting.Patches
         [HarmonyPostfix]
         private static void Postfix(ref bool __result)
         {
-            if (__result && Plugin.Instance != null && Plugin.Instance.WantsPlantingWheel) __result = false;
+            if (__result && Plugin.Instance != null && Plugin.Instance.OpeningWheel) __result = false;
         }
     }
 
     /// <summary>
-    /// The radial key opens OpenRadialConfig, which then picks the wheel to show (main, emotes,
-    /// hover menus). With a seed selected we pick the planting wheel. The emote key keeps
-    /// opening emotes.
+    /// Opening the radial menu goes through OpenRadialConfig, which picks the wheel to show.
+    /// When we opened it, we pick the planting wheel and teach the close and release-to-use
+    /// checks about our key (vanilla only knows its own radial and emote keys).
     /// </summary>
     [HarmonyPatch(typeof(OpenRadialConfig), nameof(OpenRadialConfig.InitRadialConfig))]
     internal static class OpenRadialConfig_InitRadialConfig_Patch
@@ -30,11 +30,22 @@ namespace AdvancedPlanting.Patches
         private static bool Prefix(RadialBase radial)
         {
             Plugin plugin = Plugin.Instance;
-            if (plugin == null || !plugin.WantsPlantingWheel || ZInput.GetButton("OpenEmote")) return true;
+            if (plugin == null || !plugin.OpeningWheel) return true;
 
             // Same setup OpenRadialConfig does before opening a group.
             radial.OnInteractionDelay = delay => PlayerController.SetTakeInputDelay(delay);
             radial.ShouldAnimateIn = true;
+
+            KeyCode key = plugin.Settings.WheelKey.Value;
+            System.Func<bool> close = radial.GetClose;
+            radial.GetClose = () =>
+                (close != null && close())
+                || (Time.frameCount != plugin.WheelOpenedFrame && ZInput.GetKeyDown(key));
+            System.Func<bool> release = radial.GetReleaseToUse;
+            radial.GetReleaseToUse = () =>
+                (release != null && release())
+                || (ZInput.GetKeyUp(key) && Time.unscaledTime - plugin.WheelKeyDownTime > RadialData.SO.HoldCloseDelay);
+
             radial.Open(plugin.Wheel);
             return false;
         }

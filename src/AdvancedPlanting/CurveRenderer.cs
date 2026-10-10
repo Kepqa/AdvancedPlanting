@@ -83,10 +83,18 @@ namespace AdvancedPlanting
                 {
                     if (slot.IsPlanted) continue;
                     LineRenderer lr = Get(_rings, ringCount++, "ring", loop: true);
+                    // Ring lies in the ground plane at the slot, so it hugs slopes instead of
+                    // floating on one side and sinking into the hill on the other.
+                    Vector3 n = slot.Normal.sqrMagnitude > 0.01f ? slot.Normal.normalized : Vector3.up;
+                    Vector3 t = Vector3.Cross(n, Vector3.forward);
+                    if (t.sqrMagnitude < 0.01f) t = Vector3.Cross(n, Vector3.right);
+                    t.Normalize();
+                    Vector3 b = Vector3.Cross(n, t);
+                    Vector3 centre = slot.Position + n * 0.1f;
                     for (int k = 0; k < RingSegments; k++)
                     {
                         float a = k * Mathf.PI * 2f / RingSegments;
-                        _ringBuffer[k] = slot.Position + new Vector3(Mathf.Cos(a) * growRadius, 0.12f, Mathf.Sin(a) * growRadius);
+                        _ringBuffer[k] = centre + (t * Mathf.Cos(a) + b * Mathf.Sin(a)) * growRadius;
                     }
                     lr.positionCount = RingSegments;
                     lr.SetPositions(_ringBuffer);

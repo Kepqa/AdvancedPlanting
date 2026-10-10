@@ -14,7 +14,7 @@ namespace AdvancedPlanting
     {
         public const string PluginGuid = "kepqa.AdvancedPlanting";
         public const string PluginName = "AdvancedPlanting";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.2.1";
         public const string PluginAuthor = "kepqa";
 
         public static Plugin Instance { get; private set; }
@@ -49,6 +49,7 @@ namespace AdvancedPlanting
             Instance = this;
             Log = Logger;
             Settings = new ModConfig(Config);
+            Loc.Load();
             State = new FigureState { Enabled = Settings.EnabledByDefault.Value };
             Layout = new LayoutService(Settings);
             Window = new SettingsWindow(this);
@@ -97,16 +98,14 @@ namespace AdvancedPlanting
         /// <summary>Figure mode is on and a seed is selected.</summary>
         private bool FigureModeActive => State.Enabled && HasPlantContext;
 
-        public bool WantsPlantingWheel
-        {
-            get
-            {
-                Player p = Player.m_localPlayer;
-                if (p == null || !p.InPlaceMode()) return false;
-                Piece piece = p.GetSelectedPiece();
-                return piece != null && piece.GetComponent<Plant>() != null;
-            }
-        }
+        /// <summary>True only during our own call to open the radial menu.</summary>
+        public bool OpeningWheel { get; private set; }
+
+        /// <summary>Frame the wheel was opened on, so the opening key press does not close it.</summary>
+        public int WheelOpenedFrame { get; private set; } = -10;
+
+        /// <summary>Time the wheel key went down, for hold-and-release selection.</summary>
+        public float WheelKeyDownTime { get; private set; }
 
         public bool WindowBlocksInput => Window != null && Window.IsBlockingInput;
 
@@ -120,14 +119,7 @@ namespace AdvancedPlanting
 
         public void SetSpacing(float value) => State.SetSpacing(_prefabName, value, MinSpacing);
 
-        public string RadialKeyName
-        {
-            get
-            {
-                string key = ZInput.instance != null ? ZInput.instance.GetBoundKeyString("OpenRadial", true) : null;
-                return string.IsNullOrEmpty(key) ? "G" : GameText.Localize(key);
-            }
-        }
+        public string WheelKeyName => Settings.WheelKey.Value.ToString();
 
         public void SetFigureMode(bool on)
         {
@@ -139,7 +131,7 @@ namespace AdvancedPlanting
                 Window.Close();
                 HidePreview();
             }
-            _player?.Message(MessageHud.MessageType.Center, on ? "Figure planting" : "Single planting");
+            _player?.Message(MessageHud.MessageType.Center, Loc.T(on ? "msg.figure_mode" : "msg.single_mode"));
         }
 
         // ------------------------------------------------------------------ update
@@ -152,12 +144,48 @@ namespace AdvancedPlanting
                 HidePreview();
                 return;
             }
+            HandleWheelKey();
             if (!State.Enabled)
             {
                 HidePreview();
                 return;
             }
             UpdateAutoContinue();
+        }
+
+        private void HandleWheelKey()
+        {
+            KeyCode key = Settings.WheelKey.Value;
+            if (key == KeyCode.None || !ZInput.GetKeyDown(key)) return;
+            WheelKeyDownTime = Time.unscaledTime;
+            if (global::Hud.InRadial() || Window.IsBlockingInput || global::Hud.IsPieceSelectionVisible()) return;
+            if (!_player.TakeInput()) return;
+            OpenWheel();
+        }
+
+        /// <summary>
+        /// Opens the vanilla radial menu the same way the radial key does, and routes it to the
+        /// planting wheel (see UiPatches).
+        /// </summary>
+        private void OpenWheel()
+        {
+            global::Hud hud = global::Hud.instance;
+            if (hud == null || hud.m_radialMenu == null || hud.m_config == null) return;
+            OpeningWheel = true;
+            try
+            {
+                WheelOpenedFrame = Time.frameCount;
+                hud.m_radialMenu.CanOpen = true;
+                hud.m_radialMenu.Open(hud.m_config);
+            }
+            catch (Exception e)
+            {
+                Log.LogError("Could not open the planting wheel: " + e);
+            }
+            finally
+            {
+                OpeningWheel = false;
+            }
         }
 
         // ------------------------------------------------------------------ clicks
@@ -182,8 +210,8 @@ namespace AdvancedPlanting
                     ItemDrop.ItemData tool = player.GetRightItem();
                     if (tool != null && !player.HaveStamina(tool.m_shared.m_attack.m_attackStamina))
                     {
-                        player.Message(MessageHud.MessageType.Center, "Not enough stamina. Rest and click again"
-                            + (State.AutoContinue ? "" : ", or turn on auto-continue in settings"));
+                        player.Message(MessageHud.MessageType.Center, Loc.T("msg.no_stamina")
+                            + (State.AutoContinue ? "" : Loc.T("msg.no_stamina.auto_hint")));
                     }
                     return false;
                 }
@@ -194,7 +222,7 @@ namespace AdvancedPlanting
             GameObject ghost = player.m_placementGhost;
             if (ghost == null || !ghost.activeSelf)
             {
-                player.Message(MessageHud.MessageType.Center, "Aim at the ground");
+                player.Message(MessageHud.MessageType.Center, Loc.T("msg.aim"));
                 return true;
             }
             Vector3 cursor = ghost.transform.position;
@@ -203,14 +231,14 @@ namespace AdvancedPlanting
             if (snap >= 0)
             {
                 State.Finish();
-                player.Message(MessageHud.MessageType.Center, StatusPanel.ModeName(State.Mode) + " ready. Click to plant");
+                player.Message(MessageHud.MessageType.Center, Loc.T("msg.ready", StatusPanel.ModeName(State.Mode)));
                 return true;
             }
             if (State.ControlPoints.Count > 0 && FlatDistance(State.ControlPoints[State.ControlPoints.Count - 1], cursor) < 0.2f)
                 return true; // double click on the same spot of a fixed-size path: ignore
 
             State.AddPoint(cursor);
-            if (State.Finished) player.Message(MessageHud.MessageType.Center, StatusPanel.ModeName(State.Mode) + " ready. Click to plant");
+            if (State.Finished) player.Message(MessageHud.MessageType.Center, Loc.T("msg.ready", StatusPanel.ModeName(State.Mode)));
             return true;
         }
 
@@ -332,7 +360,7 @@ namespace AdvancedPlanting
 
             if (Layout.ValidCount == 0)
             {
-                player.Message(MessageHud.MessageType.Center, "Nothing to plant: " + PlacementValidator.Describe(Layout.TopBlockReason));
+                player.Message(MessageHud.MessageType.Center, Loc.T("msg.nothing", PlacementValidator.Describe(Layout.TopBlockReason)));
                 return true;
             }
 
@@ -340,15 +368,15 @@ namespace AdvancedPlanting
             placedAny = result.Planted > 0;
             Layout.Revalidate(State, _piece, _plant, _player);
 
-            string msg = "Planted " + result.Planted;
+            string msg = Loc.T("msg.planted", result.Planted);
             if (Layout.ValidCount > 0)
             {
-                msg += ", " + Layout.ValidCount + " left";
-                if (result.OutOfStamina) msg += State.AutoContinue ? " (auto-continue will finish)" : " (out of stamina: rest and click again)";
-                else if (result.OutOfSeeds) msg += " (out of seeds)";
-                else if (result.ToolBroken) msg += " (tool broken)";
+                msg += Loc.T("msg.left", Layout.ValidCount);
+                if (result.OutOfStamina) msg += " " + Loc.T(State.AutoContinue ? "msg.left.auto" : "msg.left.stamina");
+                else if (result.OutOfSeeds) msg += " " + Loc.T("msg.left.seeds");
+                else if (result.ToolBroken) msg += " " + Loc.T("msg.left.tool");
             }
-            if (result.Blocked > 0) msg += ", " + result.Blocked + " blocked (" + PlacementValidator.Describe(Layout.TopBlockReason) + ")";
+            if (result.Blocked > 0) msg += Loc.T("msg.blocked", result.Blocked, PlacementValidator.Describe(Layout.TopBlockReason));
             player.Message(MessageHud.MessageType.TopLeft, msg);
 
             CompleteIfDone();
@@ -375,35 +403,40 @@ namespace AdvancedPlanting
         private void CompleteIfDone()
         {
             if (Layout.ValidCount > 0 || Layout.BlockedCount > 0 || Layout.PlantedCount == 0) return;
-            _player?.Message(MessageHud.MessageType.Center, "Figure complete: " + Layout.PlantedCount + " plants");
+            _player?.Message(MessageHud.MessageType.Center, Loc.T("msg.complete", Layout.PlantedCount));
             State.Clear();
         }
 
         // ------------------------------------------------------------------ texts
 
+        /// <summary>What the next left click does, for the panel and the key hints.</summary>
         public string NextActionHint()
         {
             if (State.Finished)
-            {
-                if (Layout.ValidCount > 0) return "Click: plant " + Layout.ValidCount;
-                return "Click: start a new figure";
-            }
+                return Layout.ValidCount > 0 ? Loc.T("hint.plant", Layout.ValidCount) : Loc.T("hint.new_figure");
             int have = State.ControlPoints.Count;
             switch (State.Mode)
             {
                 case PathMode.Segment:
-                    return have == 0 ? "Click: line start" : "Click: line end";
+                    return Loc.T(have == 0 ? "hint.line.start" : "hint.line.end");
                 case PathMode.Arc:
-                    return have == 0 ? "Click: arc start" : have == 1 ? "Click: arc middle" : "Click: arc end";
+                    return Loc.T(have == 0 ? "hint.arc.start" : have == 1 ? "hint.arc.middle" : "hint.arc.end");
                 case PathMode.Circle:
-                    return "Click: point " + (have + 1) + " of 3 on the circle";
+                    return Loc.T("hint.circle.point", have + 1);
                 case PathMode.Spline:
-                    return have < 2 ? "Click: curve point " + (have + 1) : "Click: next point  ·  click the last point to finish";
+                    return have < 2 ? Loc.T("hint.curve.point", have + 1) : Loc.T("hint.curve.next");
                 case PathMode.Contour:
-                    return have < 3 ? "Click: shape point " + (have + 1) : "Click: next point  ·  click the first point to close";
+                    return have < 3 ? Loc.T("hint.shape.point", have + 1) : Loc.T("hint.shape.next");
                 default:
                     return "";
             }
+        }
+
+        /// <summary>Second hint while drawing: how to finish a curve or close a shape, or null.</summary>
+        public string FinishHint()
+        {
+            if (State.Finished || !State.CanFinish) return null;
+            return Loc.T(State.Mode == PathMode.Contour ? "hint.shape.close" : "hint.curve.finish");
         }
 
         public string ResourceLine()
@@ -416,25 +449,25 @@ namespace AdvancedPlanting
             int byStamina = perPlant > 0.01f ? Mathf.FloorToInt(stamina / perPlant) : int.MaxValue;
 
             string seedText = seeds >= toPlant ? seeds.ToString() : "<color=#ff8080>" + seeds + "</color>";
-            string line = "Seeds " + seedText + "/" + toPlant;
+            string line = Loc.T("panel.seeds", seedText, toPlant);
             if (perPlant > 0.01f)
             {
                 int now = Mathf.Min(toPlant, byStamina);
-                line += "   Stamina for " + (now >= toPlant ? now.ToString() : "<color=#ffd080>" + now + "</color>") + " now";
+                line += "   " + Loc.T("panel.stamina", now >= toPlant ? now.ToString() : "<color=#ffd080>" + now + "</color>");
             }
             return line;
         }
 
         public string CostSummary()
         {
-            if (Layout.Slots.Count == 0) return "Place points to see the cost.";
+            if (Layout.Slots.Count == 0) return Loc.T("window.cost.empty");
             float perPlant = _player != null ? _player.GetBuildStamina() : 0f;
             int toPlant = Layout.ValidCount;
-            string s = toPlant + " to plant, " + Layout.PlantedCount + " planted, " + Layout.BlockedCount + " blocked.\n";
-            s += "Needs " + toPlant + " seeds (you have " + SeedsAvailable() + ")";
+            string s = Loc.T("window.cost.counts", toPlant, Layout.PlantedCount, Layout.BlockedCount) + "\n";
+            s += Loc.T("window.cost.seeds", toPlant, SeedsAvailable());
             if (perPlant > 0.01f && _player != null)
-                s += " and about " + Mathf.CeilToInt(toPlant * perPlant) + " stamina (you have " + Mathf.FloorToInt(_player.GetStamina())
-                    + " of " + Mathf.FloorToInt(_player.GetMaxStamina()) + ").";
+                s += " " + Loc.T("window.cost.stamina", Mathf.CeilToInt(toPlant * perPlant), Mathf.FloorToInt(_player.GetStamina()),
+                    Mathf.FloorToInt(_player.GetMaxStamina()));
             return s;
         }
 

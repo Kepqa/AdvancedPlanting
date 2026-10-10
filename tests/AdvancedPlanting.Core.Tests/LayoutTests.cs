@@ -125,7 +125,7 @@ namespace AdvancedPlanting.Core.Tests
                 Mode = PathMode.Contour,
                 ControlPoints = new List<Vec2> { new Vec2(0, 0), new Vec2(12, 0), new Vec2(12, 12), new Vec2(0, 12) },
                 Spacing = 2f,
-                Rows = 0,
+                Fill = true,
                 MinDistance = 1f,
             };
             LayoutResult r = PlantingLayout.Generate(req);
@@ -175,6 +175,37 @@ namespace AdvancedPlanting.Core.Tests
                     Assert.InRange(p.Position.Z, 0.5f, 9.5f);
                 });
             }
+        }
+
+        [Fact]
+        public void ClosedPath_LeftMeansInside_RightMeansOutside_ForBothWindings()
+        {
+            var ccwPts = new List<Vec2> { new Vec2(0, 0), new Vec2(10, 0), new Vec2(10, 10), new Vec2(0, 10) };
+            var cwPts = new List<Vec2> { new Vec2(0, 0), new Vec2(0, 10), new Vec2(10, 10), new Vec2(10, 0) };
+            foreach (var pts in new[] { ccwPts, cwPts })
+            {
+                var inside = new LayoutRequest { Mode = PathMode.Contour, ControlPoints = pts, Spacing = 2f, Rows = 2, Side = RowSide.Left, MinDistance = 1f };
+                var outside = new LayoutRequest { Mode = PathMode.Contour, ControlPoints = pts, Spacing = 2f, Rows = 2, Side = RowSide.Right, MinDistance = 1f };
+                Vec2 c = new Vec2(5, 5);
+                float guideMean = (float)PlantingLayout.Generate(inside).Points.Where(p => p.Row == 0).Average(p => Vec2.Distance(p.Position, c));
+                float inMean = (float)PlantingLayout.Generate(inside).Points.Where(p => p.Row != 0).Average(p => Vec2.Distance(p.Position, c));
+                float outMean = (float)PlantingLayout.Generate(outside).Points.Where(p => p.Row != 0).Average(p => Vec2.Distance(p.Position, c));
+                Assert.True(inMean < guideMean, "inside row is not inside");
+                Assert.True(outMean > guideMean, "outside row is not outside");
+            }
+        }
+
+        [Fact]
+        public void Circle_Fill_ReachesTheCentre_AndWithoutFillKeepsRowCount()
+        {
+            var pts = new List<Vec2> { new Vec2(-8, 0), new Vec2(0, 8), new Vec2(8, 0) };
+            var filled = new LayoutRequest { Mode = PathMode.Circle, ControlPoints = pts, Spacing = 1.5f, Fill = true, MinDistance = 1f, MaxPoints = 5000 };
+            LayoutResult f = PlantingLayout.Generate(filled);
+            float nearest = f.Points.Min(p => p.Position.Length);
+            Assert.True(nearest < 2.5f, $"fill stops {nearest} m from the centre");
+
+            var ring = new LayoutRequest { Mode = PathMode.Circle, ControlPoints = pts, Spacing = 1.5f, Rows = 2, Fill = false, MinDistance = 1f };
+            Assert.Equal(2, PlantingLayout.Generate(ring).RowCurves.Count);
         }
 
         [Fact]

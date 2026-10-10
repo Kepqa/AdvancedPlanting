@@ -22,8 +22,6 @@ namespace AdvancedPlanting.UI
         private int _closedFrame = -10;
         private GUIStyle _label, _value, _hint, _header;
 
-        private static readonly string[] ModeNames = { "Line", "Arc", "Circle", "Curve", "Shape" };
-        private static readonly string[] SideNames = { "Both", "Left", "Right" };
 
         public SettingsWindow(Plugin plugin)
         {
@@ -71,7 +69,7 @@ namespace AdvancedPlanting.UI
 
             EnsureStyles();
             GUI.backgroundColor = new Color(0.15f, 0.12f, 0.09f, 0.97f);
-            _rect = GUILayout.Window(WindowId, _rect, Draw, "Planting settings  —  " + _plugin.PlantDisplayName, GUILayout.Width(Width));
+            _rect = GUILayout.Window(WindowId, _rect, Draw, Loc.T("window.title", _plugin.PlantDisplayName), GUILayout.Width(Width));
         }
 
         private void Draw(int id)
@@ -80,19 +78,21 @@ namespace AdvancedPlanting.UI
             GUI.backgroundColor = Color.white;
 
             GUILayout.Space(4);
-            GUILayout.Label("Path", _header);
-            int mode = GUILayout.Toolbar((int)s.Mode, ModeNames);
+            GUILayout.Label(Loc.T("window.path"), _header);
+            int mode = GUILayout.Toolbar((int)s.Mode, new[] { StatusPanel.ModeName(PathMode.Segment), StatusPanel.ModeName(PathMode.Arc), StatusPanel.ModeName(PathMode.Circle), StatusPanel.ModeName(PathMode.Spline), StatusPanel.ModeName(PathMode.Contour) });
             if (mode != (int)s.Mode)
             {
                 _plugin.SetFigureMode(true);
                 s.SetMode((PathMode)mode);
             }
 
-            if (s.Mode != PathMode.Contour)
+            GUILayout.Space(6);
+            bool closed = s.IsClosedPath;
+            if (closed) s.SetFill(GUILayout.Toggle(s.Fill, " " + Loc.T("window.fill")));
+            if (!(closed && s.Fill))
             {
-                GUILayout.Space(6);
-                GUILayout.Label("Extra rows go to", _header);
-                int side = GUILayout.Toolbar((int)s.Side, SideNames);
+                GUILayout.Label(Loc.T("window.rows_go"), _header);
+                int side = GUILayout.Toolbar((int)s.Side, new[] { StatusPanel.SideName(RowSide.Both, closed), StatusPanel.SideName(RowSide.Left, closed), StatusPanel.SideName(RowSide.Right, closed) });
                 if (side != (int)s.Side) s.SetSide((RowSide)side);
             }
 
@@ -100,30 +100,30 @@ namespace AdvancedPlanting.UI
             float min = _plugin.MinSpacing;
             float spacing = _plugin.CurrentSpacing;
             float max = Mathf.Max(min * 4f, 6f);
-            float newSpacing = Slider("Spacing", spacing, min, max, spacing.ToString("0.00") + " m");
+            float newSpacing = Slider(Loc.T("window.spacing"), spacing, min, max, Loc.T("window.unit.m", spacing.ToString("0.00")));
             if (!Mathf.Approximately(newSpacing, spacing)) _plugin.SetSpacing(newSpacing);
 
-            bool fill = s.Mode == PathMode.Contour;
-            int rowsMin = fill ? 0 : 1;
-            string rowsText = fill && s.Rows == 0 ? "fill" : s.Rows.ToString();
-            float rows = Slider("Rows", s.Rows, rowsMin, 20, rowsText);
-            s.SetRows(Mathf.RoundToInt(rows));
+            if (!(closed && s.Fill))
+            {
+                float rows = Slider(Loc.T("window.rows"), s.Rows, 1, 20, s.Rows.ToString());
+                s.SetRows(Mathf.RoundToInt(rows));
+            }
 
-            float jitter = Slider("Jitter", s.Jitter, 0f, 1f, s.Jitter.ToString("0.00"));
+            float jitter = Slider(Loc.T("window.jitter"), s.Jitter, 0f, 1f, s.Jitter.ToString("0.00"));
             s.SetJitter(jitter);
             if (s.Jitter > 0f && _plugin.JitterRoom <= 0.01f)
-                GUILayout.Label("No room for jitter at this spacing. Increase spacing to let plants move.", _hint);
+                GUILayout.Label(Loc.T("window.no_room"), _hint);
 
-            float thinning = Slider("Thinning", s.Thinning, 0f, 0.9f, Mathf.RoundToInt(s.Thinning * 100f) + " %");
+            float thinning = Slider(Loc.T("window.thinning"), s.Thinning, 0f, 0.9f, Mathf.RoundToInt(s.Thinning * 100f) + " %");
             s.SetThinning(thinning);
 
             GUILayout.Space(4);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Reshuffle pattern", GUILayout.Width(160))) s.RerollSeed();
+            if (GUILayout.Button(Loc.T("window.reshuffle"), GUILayout.Width(200))) s.RerollSeed();
             GUILayout.FlexibleSpace();
-            s.AutoContinue = GUILayout.Toggle(s.AutoContinue, " Auto-continue planting");
+            s.AutoContinue = GUILayout.Toggle(s.AutoContinue, " " + Loc.T("window.auto"));
             GUILayout.EndHorizontal();
-            GUILayout.Label("Auto-continue plants the rest of the figure one by one as stamina recovers, paying for each plant. Switch tools or leave figure mode to stop.", _hint);
+            GUILayout.Label(Loc.T("window.auto.desc"), _hint);
 
             GUILayout.Space(8);
             GUILayout.Label(_plugin.CostSummary(), _label);
@@ -131,7 +131,7 @@ namespace AdvancedPlanting.UI
             GUILayout.Space(6);
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Close (Esc)", GUILayout.Width(120))) Close();
+            if (GUILayout.Button(Loc.T("window.close") + " (Esc)", GUILayout.Width(140))) Close();
             GUILayout.EndHorizontal();
 
             GUI.DragWindow();

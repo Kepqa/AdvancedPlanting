@@ -1,0 +1,115 @@
+# AdvancedPlanting translations.
+# File name = game language name (English, Russian, German, French, ...).
+# Format: key = value. {0}, {1} are filled in by the mod. \n is a line break.
+# Put a copy into BepInEx/plugins/<mod folder>/Translations/ to override or add a language.
+
+mode.line = Line
+mode.arc = Arc
+mode.circle = Circle
+mode.curve = Curve
+mode.shape = Shape
+
+side.both = both sides
+side.left = left
+side.right = right
+side.inside = inside
+side.outside = outside
+
+reason.ok = ok
+reason.no_ground = no ground
+reason.no_build = no-build zone
+reason.ward = ward
+reason.not_cultivated = not cultivated
+reason.needs_dirt = needs dirt
+reason.wrong_biome = wrong biome
+reason.too_hot = too hot
+reason.too_cold = too cold
+reason.deep_snow = deep snow
+reason.in_water = in water
+reason.no_space = no space
+reason.planted = planted
+
+wheel.title = Planting
+wheel.current = {0} (current)
+wheel.single = Single plant
+wheel.single.desc = Ordinary planting, one plant per click
+wheel.line.desc = 2 points
+wheel.arc.desc = Start, middle, end
+wheel.circle.desc = 3 points on the circle
+wheel.curve.desc = Click the last point again to finish
+wheel.shape.desc = Click the first point to close
+wheel.side = Rows: {0}
+wheel.side.desc = Where extra rows go
+wheel.fill.on = Fill inside: on
+wheel.fill.off = Fill inside: off
+wheel.fill.desc = Circle and shape: plant rows all the way to the centre
+wheel.fill.na = Only for circle and shape
+wheel.undo = Undo point
+wheel.undo.none = No points yet
+wheel.undo.count = Points: {0}
+wheel.clear = Clear figure
+wheel.clear.desc = Start over
+wheel.reshuffle = Reshuffle
+wheel.reshuffle.desc = New random pattern for jitter and thinning
+wheel.settings = Settings
+wheel.settings.desc = Spacing, rows, jitter, thinning, auto-continue
+
+msg.figure_mode = Figure planting
+msg.single_mode = Single planting
+msg.aim = Aim at the ground
+msg.ready = {0} ready. Click to plant
+msg.no_stamina = Not enough stamina. Rest and click again
+msg.no_stamina.auto_hint = , or turn on auto-continue in settings
+msg.nothing = Nothing to plant: {0}
+msg.planted = Planted {0}
+msg.left = , {0} left
+msg.left.auto = (auto-continue will finish)
+msg.left.stamina = (out of stamina: rest and click again)
+msg.left.seeds = (out of seeds)
+msg.left.tool = (tool broken)
+msg.blocked = , {0} blocked ({1})
+msg.complete = Figure complete: {0} plants
+
+hint.plant = Plant {0}
+hint.new_figure = Start a new figure
+hint.line.start = Line start
+hint.line.end = Line end
+hint.arc.start = Arc start
+hint.arc.middle = Arc middle
+hint.arc.end = Arc end
+hint.circle.point = Point {0} of 3 on the circle
+hint.curve.point = Curve point {0}
+hint.curve.next = Next point
+hint.curve.finish = Finish: click the last point
+hint.shape.point = Shape point {0}
+hint.shape.next = Next point
+hint.shape.close = Close: click the first point
+hint.wheel = Planting menu
+
+panel.to_plant = {0} to plant
+panel.planted = {0} planted
+panel.blocked = {0} blocked: {1}
+panel.cap = limit {0}
+panel.seeds = Seeds {0}/{1}
+panel.stamina = Stamina for {0} now
+panel.auto = Auto-continue is on
+
+window.title = Planting settings: {0}
+window.path = Path
+window.rows_go = Extra rows go
+window.spacing = Spacing
+window.rows = Rows
+window.jitter = Jitter
+window.thinning = Thinning
+window.fill = Fill the shape to the centre
+window.fill.na = Fill works for circle and shape
+window.no_room = No room for jitter at this spacing. Increase spacing to let plants move.
+window.reshuffle = Reshuffle pattern
+window.auto = Auto-continue planting
+window.auto.desc = Plants the rest of the figure one by one as stamina recovers, paying for each plant. Switch tools or leave figure mode to stop.
+window.close = Close
+window.cost.empty = Place points to see the cost.
+window.cost.counts = {0} to plant, {1} planted, {2} blocked.
+window.cost.seeds = Needs {0} seeds (you have {1})
+window.cost.stamina = and about {0} stamina (you have {1} of {2}).
+window.unit.m = {0} m

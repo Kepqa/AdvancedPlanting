@@ -41,13 +41,25 @@ namespace AdvancedPlanting
             }
         }
 
-        /// <summary>Terrain height under (x, z) via the game's own terrain ray.</summary>
+        /// <summary>Terrain height under (x, z), same ray and mask as ZoneSystem.GetGroundHeight.</summary>
         public static bool TryGetGroundHeight(float x, float z, out float height)
         {
+            bool ok = TryGetGround(x, z, out height, out _);
+            return ok;
+        }
+
+        /// <summary>Terrain height and surface normal under (x, z) with a single ray.</summary>
+        public static bool TryGetGround(float x, float z, out float height, out Vector3 normal)
+        {
             height = 0f;
+            normal = Vector3.up;
             ZoneSystem zs = ZoneSystem.instance;
             if (zs == null) return false;
-            return zs.GetGroundHeight(new Vector3(x, 0f, z), out height);
+            if (!Physics.Raycast(new Vector3(x, 6000f, z), Vector3.down, out RaycastHit hit, 10000f, zs.m_terrainRayMask))
+                return false;
+            height = hit.point.y;
+            normal = hit.normal;
+            return true;
         }
 
         public static PointStatus Check(Vector3 pos, Piece piece, Plant plant, Player player)
@@ -124,19 +136,19 @@ namespace AdvancedPlanting
         {
             switch (status)
             {
-                case PointStatus.Valid: return "ok";
-                case PointStatus.NoGround: return "no ground";
-                case PointStatus.NoBuildZone: return "no-build zone";
-                case PointStatus.PrivateZone: return "ward";
-                case PointStatus.NeedCultivated: return "not cultivated";
-                case PointStatus.NeedDirt: return "needs dirt";
-                case PointStatus.WrongBiome: return "wrong biome";
-                case PointStatus.TooHot: return "too hot";
-                case PointStatus.TooCold: return "too cold";
-                case PointStatus.DeepSnow: return "deep snow";
-                case PointStatus.InWater: return "in water";
-                case PointStatus.NoSpace: return "no space";
-                case PointStatus.Planted: return "planted";
+                case PointStatus.Valid: return Loc.T("reason.ok");
+                case PointStatus.NoGround: return Loc.T("reason.no_ground");
+                case PointStatus.NoBuildZone: return Loc.T("reason.no_build");
+                case PointStatus.PrivateZone: return Loc.T("reason.ward");
+                case PointStatus.NeedCultivated: return Loc.T("reason.not_cultivated");
+                case PointStatus.NeedDirt: return Loc.T("reason.needs_dirt");
+                case PointStatus.WrongBiome: return Loc.T("reason.wrong_biome");
+                case PointStatus.TooHot: return Loc.T("reason.too_hot");
+                case PointStatus.TooCold: return Loc.T("reason.too_cold");
+                case PointStatus.DeepSnow: return Loc.T("reason.deep_snow");
+                case PointStatus.InWater: return Loc.T("reason.in_water");
+                case PointStatus.NoSpace: return Loc.T("reason.no_space");
+                case PointStatus.Planted: return Loc.T("reason.planted");
                 default: return status.ToString();
             }
         }

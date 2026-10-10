@@ -6,12 +6,14 @@ namespace AdvancedPlanting
     /// <summary>
     /// All user-facing settings. Written to BepInEx/config/kepqa.AdvancedPlanting.cfg.
     ///
-    /// The mod has no hotkeys of its own: left click draws and plants, the vanilla radial-menu key
-    /// (G by default) opens the planting wheel while a seed is selected, and everything else is in
-    /// the wheel or the settings window.
+    /// The mod has one hotkey: the planting wheel. Left click draws and plants; everything else
+    /// is in the wheel or the settings window.
     /// </summary>
     public sealed class ModConfig
     {
+        // Keys
+        public ConfigEntry<KeyCode> WheelKey;
+
         // Behaviour
         public ConfigEntry<bool> EnabledByDefault;
         public ConfigEntry<float> DefaultSpacingFactor;
@@ -35,6 +37,9 @@ namespace AdvancedPlanting
 
         public ModConfig(ConfigFile file)
         {
+            WheelKey = file.Bind("0. Keys", "PlantingWheel", KeyCode.B,
+                "Opens the planting wheel while a seed is selected in build mode. Press again or hold and release to choose. B is unused by the game.");
+
             const string behaviour = "1. Behaviour";
             EnabledByDefault = file.Bind(behaviour, "EnabledByDefault", true,
                 "Start in figure mode. Switch to ordinary planting from the planting wheel.");

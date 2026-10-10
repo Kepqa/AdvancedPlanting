@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+- Planting wheel moved to its own key (B by default, configurable). The vanilla radial key works as before.
+- Fill toggle for circle and shape: plant concentric rows to the centre. Without it, the row count and side apply, and for closed paths the sides read as inside and outside.
+- New wheel icons: drawn at 256 px with a dark outline, simpler shapes that stay readable at wheel size.
+- Every text is translatable: English and Russian built in, more languages or edits through text files in the Translations folder. The language follows the game setting.
+- Grow-radius rings follow the slope of the ground.
+- Removed "Finish figure" from the wheel; clicking the last point does the same.
+
 ## 0.2.0
 
 - No hotkeys of its own anymore. Left click places points and plants; the vanilla radial key (G) opens a planting wheel while a seed is selected.

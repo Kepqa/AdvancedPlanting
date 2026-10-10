@@ -22,11 +22,14 @@ namespace AdvancedPlanting.Core
         /// <summary>Distance between rows. Zero or less means "same as Spacing".</summary>
         public float RowSpacing = 0f;
 
-        /// <summary>
-        /// Number of rows. For <see cref="PathMode.Contour"/> a value of 0 fills the whole shape
-        /// with concentric rows until it collapses.
-        /// </summary>
+        /// <summary>Number of rows, including the guide path itself. Ignored when <see cref="Fill"/> is set.</summary>
         public int Rows = 1;
+
+        /// <summary>
+        /// For closed paths (circle, shape): fill the whole interior with concentric rows until
+        /// it collapses. Ignored for open paths.
+        /// </summary>
+        public bool Fill = false;
 
         public RowSide Side = RowSide.Both;
 
@@ -214,15 +217,13 @@ namespace AdvancedPlanting.Core
             var rows = new List<RowCurve>();
             float rowSpacing = request.EffectiveRowSpacing;
 
-            if (request.Mode == PathMode.Contour && guide.IsClosed)
+            if (guide.IsClosed && request.Fill)
             {
                 float inward = Offset.InwardSign(guide);
-                int limit = request.Rows <= 0 ? MaxContourRows : request.Rows;
                 rows.Add(new RowCurve { Curve = guide, Index = 0 });
-                for (int k = 1; k < limit; k++)
+                for (int k = 1; k < MaxContourRows; k++)
                 {
                     List<Polyline> pieces = Offset.OffsetPolyline(guide, inward * rowSpacing * k, request.Resolution);
-                    if (pieces.Count == 0) break;
                     bool any = false;
                     foreach (Polyline piece in pieces)
                     {
@@ -235,6 +236,8 @@ namespace AdvancedPlanting.Core
                 return rows;
             }
 
+            // For closed paths "left" means inside and "right" outside, whatever the winding.
+            float sideSign = guide.IsClosed ? Offset.InwardSign(guide) : 1f;
             int count = Math.Max(1, request.Rows);
             for (int i = 0; i < count; i++)
             {
@@ -252,7 +255,7 @@ namespace AdvancedPlanting.Core
                     continue;
                 }
 
-                foreach (Polyline piece in Offset.OffsetPolyline(guide, rowSpacing * k, request.Resolution))
+                foreach (Polyline piece in Offset.OffsetPolyline(guide, sideSign * rowSpacing * k, request.Resolution))
                 {
                     if (!piece.IsDegenerate) rows.Add(new RowCurve { Curve = piece, Index = k });
                 }

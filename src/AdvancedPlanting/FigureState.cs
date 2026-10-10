@@ -25,6 +25,18 @@ namespace AdvancedPlanting
         public float Thinning = 0f;
         public uint Seed = 1;
 
+        /// <summary>Fill closed paths (circle, shape) with concentric rows to the centre.</summary>
+        public bool Fill = false;
+
+        public bool IsClosedPath => Mode == PathMode.Circle || Mode == PathMode.Contour;
+
+        public void SetFill(bool fill)
+        {
+            if (fill == Fill) return;
+            Fill = fill;
+            Dirty = true;
+        }
+
         /// <summary>Figure mode. When false the cultivator behaves exactly like vanilla.</summary>
         public bool Enabled = true;
 
@@ -85,7 +97,6 @@ namespace AdvancedPlanting
             int max = mode.MaxControlPoints();
             if (max > 0 && ControlPoints.Count > max) ControlPoints.RemoveRange(max, ControlPoints.Count - max);
             Finished = max > 0 && ControlPoints.Count >= max;
-            if (mode != PathMode.Contour && Rows < 1) Rows = 1;
             Dirty = true;
         }
 
@@ -107,7 +118,7 @@ namespace AdvancedPlanting
 
         public void SetRows(int rows)
         {
-            rows = Mathf.Clamp(rows, Mode == PathMode.Contour ? 0 : 1, 50);
+            rows = Mathf.Clamp(rows, 1, 50);
             if (rows == Rows) return;
             Rows = rows;
             Dirty = true;

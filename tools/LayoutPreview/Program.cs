@@ -40,7 +40,7 @@ namespace LayoutPreview
                 {
                     Mode = PathMode.Contour,
                     ControlPoints = new List<Vec2> { new Vec2(4, 3), new Vec2(16, 1), new Vec2(27, 7), new Vec2(24, 17), new Vec2(12, 19), new Vec2(3, 12) },
-                    Spacing = 1.6f, Rows = 0, MinDistance = 1f, Jitter = 0.5f, Seed = 3,
+                    Spacing = 1.6f, Fill = true, MinDistance = 1f, Jitter = 0.5f, Seed = 3,
                 }),
                 ("circle_fill", new LayoutRequest
                 {

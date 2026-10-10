@@ -125,3 +125,5 @@ window.cost.counts = 待种植 {0}，已种植 {1}，受阻 {2}。
 window.cost.seeds = 需要 {0} 颗种子（背包中 {1}）
 window.cost.stamina = 以及约 {0} 耐力（当前 {1}/{2}）。
 window.unit.m = {0} 米
+
+harvest.hover = 收获周围（{0} 米）

@@ -18,6 +18,7 @@ Plant along lines, arcs, circles, curves and filled shapes.
 - Live preview: ghosts and grow-radius rings before planting.
 - Vanilla costs: seeds, durability, skill; stamina at half the vanilla cost by default.
 - Partial planting when stamina runs out; optional auto-continue.
+- Area harvest: Shift + E picks every ripe crop of the same kind within 5 m.
 - Works client-side; install on the server too to enforce its settings for all players.
 - Incompatible with other planting mods.
 
@@ -36,7 +37,8 @@ Plant along lines, arcs, circles, curves and filled shapes.
 | Rows | Mouse wheel |
 | Fill on/off | `G` |
 | Clear figure | `Backspace` |
-| Move figure under cursor / repeat last figure | `T` |
+| Move figure under cursor / repeat last figure | `Y` |
+| Harvest all ripe crops of that kind nearby | `Shift` + `E` on a crop |
 | Planting menu | `B` |
 
 ## Settings
@@ -44,7 +46,8 @@ Plant along lines, arcs, circles, curves and filled shapes.
 Edit `BepInEx/config/kepqa.AdvancedPlanting.cfg`:
 - `MaxPlants`: plants per figure, default 500.
 - `StaminaCostFactor`: stamina per plant in figure mode, default 0.5 (half of vanilla, 1 = vanilla, 0 = free).
-- `EnforceOnClients` (server): players use the server's `StaminaCostFactor`, `MaxPlants` and `MaxFigureSize`, default on.
+- `[3. Harvest]`: `Enabled`, `Modifier` (LeftShift), `Radius` (5 m), `SameTypeOnly`, `ShowHint`.
+- `EnforceOnClients` (server): players use the server's `StaminaCostFactor`, `MaxPlants`, `MaxFigureSize` and harvest `Enabled` / `Radius`, default on.
 - Keys and display options.
 
 ![Planting menu](images/preview-6-settings-wheel.jpg)

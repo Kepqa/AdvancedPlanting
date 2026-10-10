@@ -127,3 +127,5 @@ window.cost.counts = {0} to plant, {1} planted, {2} blocked.
 window.cost.seeds = Needs {0} seeds (in inventory: {1})
 window.cost.stamina = and about {0} stamina (you have {1} of {2}).
 window.unit.m = {0} m
+
+harvest.hover = Harvest nearby ({0} m)

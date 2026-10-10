@@ -34,6 +34,13 @@ namespace AdvancedPlanting
         public ConfigEntry<float> SnapRadius;
         public ConfigEntry<float> AutoContinueInterval;
 
+        // Harvest
+        public ConfigEntry<bool> HarvestEnabled;
+        public ConfigEntry<KeyCode> HarvestModifier;
+        public ConfigEntry<float> HarvestRadius;
+        public ConfigEntry<bool> HarvestSameType;
+        public ConfigEntry<bool> HarvestHint;
+
         // Server
         public ConfigEntry<bool> EnforceOnClients;
 
@@ -46,6 +53,8 @@ namespace AdvancedPlanting
         public float StaminaFactor => ServerConfig.Get(StaminaCostFactor);
         public int PlantLimit => ServerConfig.Get(MaxPlants);
         public float FigureSizeLimit => ServerConfig.Get(MaxFigureSize);
+        public bool HarvestOn => ServerConfig.Get(HarvestEnabled);
+        public float HarvestRadiusLimit => ServerConfig.Get(HarvestRadius);
 
         // Display
         public ConfigEntry<bool> ShowHud;
@@ -68,7 +77,7 @@ namespace AdvancedPlanting
                 "Turns filling of circles and shapes on or off. The radial-menu key does nothing in build mode, so G is free there. None to disable.");
             ClearKey = file.Bind("0. Keys", "ClearFigure", KeyCode.Backspace,
                 "Removes the whole figure. None to disable.");
-            RepeatKey = file.Bind("0. Keys", "RepeatFigure", KeyCode.T,
+            RepeatKey = file.Bind("0. Keys", "RepeatFigure", KeyCode.Y,
                 "Moves the finished figure under the cursor, or places the last figure again once it is planted or cleared. None to disable.");
             RowsOnMouseWheel = file.Bind("0. Keys", "RowsOnMouseWheel", true,
                 "In figure mode the mouse wheel changes the number of rows instead of rotating (plants get a random rotation anyway).");
@@ -95,11 +104,24 @@ namespace AdvancedPlanting
             AutoContinueInterval = file.Bind(behaviour, "AutoContinueInterval", 0.6f,
                 new ConfigDescription("Seconds between plants when auto-continue is on.", new AcceptableValueRange<float>(0.2f, 5f)));
 
-            EnforceOnClients = file.Bind("3. Server", "EnforceOnClients", true,
-                "Only matters on a server or the host. Players who have this mod use the server's StaminaCostFactor, MaxPlants and MaxFigureSize instead of their own.");
+            const string harvest = "3. Harvest";
+            HarvestEnabled = file.Bind(harvest, "Enabled", true,
+                "Hold the modifier and pick a ripe crop to also pick every crop of the same kind around it.");
+            HarvestModifier = file.Bind(harvest, "Modifier", KeyCode.LeftShift,
+                "Key to hold while picking. None picks the whole area with every pick.");
+            HarvestRadius = file.Bind(harvest, "Radius", 5f,
+                new ConfigDescription("Radius in meters around the picked crop.", new AcceptableValueRange<float>(1f, 15f)));
+            HarvestSameType = file.Bind(harvest, "SameTypeOnly", true,
+                "Only crops of the kind you picked. Off also picks berries, mushrooms, flint, branches and anything else pickable in range.");
+            HarvestHint = file.Bind(harvest, "ShowHint", true, "Show the area-harvest key under the game's pick-up hint.");
+
+            EnforceOnClients = file.Bind("4. Server", "EnforceOnClients", true,
+                "Only matters on a server or the host. Players who have this mod use the server's StaminaCostFactor, MaxPlants, MaxFigureSize, harvest Enabled and harvest Radius instead of their own.");
             Synced.Add(StaminaCostFactor);
             Synced.Add(MaxPlants);
             Synced.Add(MaxFigureSize);
+            Synced.Add(HarvestEnabled);
+            Synced.Add(HarvestRadius);
 
             const string display = "2. Display";
             ShowHud = file.Bind(display, "ShowHud", true, "Show the status panel while a seed is selected in figure mode.");

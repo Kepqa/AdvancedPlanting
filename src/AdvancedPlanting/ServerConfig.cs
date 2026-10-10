@@ -30,9 +30,12 @@ namespace AdvancedPlanting
         /// <summary>Value of <paramref name="entry"/>, or the server's value while connected to one that sent it.</summary>
         public static T Get<T>(ConfigEntry<T> entry)
         {
-            if (Active && Overrides.TryGetValue(entry.Definition.Key, out object value) && value is T typed) return typed;
+            if (Active && Overrides.TryGetValue(Id(entry.Definition), out object value) && value is T typed) return typed;
             return entry.Value;
         }
+
+        /// <summary>Section and key, so equal key names in different sections stay apart.</summary>
+        private static string Id(ConfigDefinition d) => d.Section + "/" + d.Key;
 
         public static void Init(ModConfig config)
         {
@@ -80,7 +83,7 @@ namespace AdvancedPlanting
             pkg.Write(_config.Synced.Count);
             foreach (ConfigEntryBase entry in _config.Synced)
             {
-                pkg.Write(entry.Definition.Key);
+                pkg.Write(Id(entry.Definition));
                 pkg.Write(entry.GetSerializedValue());
             }
             return pkg;
@@ -100,7 +103,7 @@ namespace AdvancedPlanting
                 {
                     string key = pkg.ReadString();
                     string text = pkg.ReadString();
-                    ConfigEntryBase entry = _config.Synced.Find(x => x.Definition.Key == key);
+                    ConfigEntryBase entry = _config.Synced.Find(x => Id(x.Definition) == key);
                     if (entry == null) continue; // a newer server may sync more settings
                     object value = TomlTypeConverter.ConvertToValue(text, entry.SettingType);
                     if (entry.Description.AcceptableValues != null)

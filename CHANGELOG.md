@@ -6,7 +6,8 @@
 - MaxPlants default raised from 300 to 500. Existing config files keep their value.
 - README lists both settings.
 - Server settings: with the mod on the server, players use its StaminaCostFactor, MaxPlants and MaxFigureSize (EnforceOnClients, default on). No extra dependency.
-- Repeat figure (T): moves a finished figure under the cursor, or places the last planted or cleared figure again.
+- Repeat figure (Y): moves a finished figure under the cursor, or places the last planted or cleared figure again.
+- Area harvest: hold Shift and pick a ripe crop to pick every crop of the same kind within 5 m. Configurable or off in [3. Harvest]; the server can enforce Enabled and Radius.
 - The seed counter no longer turns red: it only sees the inventory, and seeds may come from containers.
 - Planting works with mods that take seeds from nearby containers: seeds are checked and taken through the game's own requirement calls, and the mod pays for every plant of a figure itself.
 

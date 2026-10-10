@@ -125,3 +125,5 @@ window.cost.counts = 植える予定 {0}、植え済み {1}、不可 {2}。
 window.cost.seeds = 種が {0} 個必要（所持品 {1}）
 window.cost.stamina = スタミナ約 {0}（現在 {1}/{2}）。
 window.unit.m = {0} m
+
+harvest.hover = 周囲を収穫（{0} m）

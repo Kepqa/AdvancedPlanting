@@ -125,3 +125,5 @@ window.cost.counts = {0} à planter, {1} plantés, {2} bloqués.
 window.cost.seeds = Il faut {0} graines (dans l'inventaire : {1})
 window.cost.stamina = et environ {0} d'endurance (vous avez {1} sur {2}).
 window.unit.m = {0} m
+
+harvest.hover = Récolter autour ({0} m)

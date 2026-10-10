@@ -125,3 +125,5 @@ window.cost.counts = Посадить: {0}, посажено: {1}, нельзя:
 window.cost.seeds = Нужно семян: {0} (в инвентаре: {1})
 window.cost.stamina = и около {0} выносливости (есть {1} из {2}).
 window.unit.m = {0} м
+
+harvest.hover = Собрать вокруг ({0} м)

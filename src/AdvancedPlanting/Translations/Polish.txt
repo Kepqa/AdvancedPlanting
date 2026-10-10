@@ -125,3 +125,5 @@ window.cost.counts = Do posadzenia: {0}, posadzono: {1}, zablokowane: {2}.
 window.cost.seeds = Potrzeba nasion: {0} (w ekwipunku: {1})
 window.cost.stamina = i około {0} wytrzymałości (masz {1} z {2}).
 window.unit.m = {0} m
+
+harvest.hover = Zbierz wokół ({0} m)

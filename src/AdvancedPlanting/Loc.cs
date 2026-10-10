@@ -11,8 +11,8 @@ namespace AdvancedPlanting
     /// Translations for every text the mod shows.
     ///
     /// Strings live in "key = value" files, one per game language (English.txt, Russian.txt,
-    /// German.txt, ...), named exactly like the language in the game settings. English and
-    /// Russian are embedded in the DLL. Files in the "Translations" folder next to the DLL
+    /// German.txt, ...), named exactly like the language in the game settings. Every bundled
+    /// language is embedded in the DLL. Files in the "Translations" folder next to the DLL
     /// override them or add new languages, so translators need no build tools.
     ///
     /// Lookup order: current game language, then English, then the key itself.

@@ -14,7 +14,7 @@ namespace AdvancedPlanting
     {
         public const string PluginGuid = "kepqa.AdvancedPlanting";
         public const string PluginName = "AdvancedPlanting";
-        public const string PluginVersion = "0.3.0";
+        public const string PluginVersion = "0.4.0";
         public const string PluginAuthor = "kepqa";
 
         public static Plugin Instance { get; private set; }
@@ -32,6 +32,7 @@ namespace AdvancedPlanting
         private BuildKeyHints _keyHints;
         private Harmony _harmony;
 
+        private float _scrollAccumulator;
         private float _nextRevalidate;
         private float _nextRebuild;
         private Vector3? _builtCursor;
@@ -60,6 +61,10 @@ namespace AdvancedPlanting
             Log = Logger;
             Settings = new ModConfig(Config);
             Loc.Load();
+            // Wheel icons and window artwork are rendered on a worker thread so the first
+            // opening of the wheel does not stall the game.
+            Icons.Prewarm();
+            UiKit.Prewarm();
             State = new FigureState { Enabled = Settings.EnabledByDefault.Value };
             Layout = new LayoutService(Settings);
             Window = new SettingsWindow(this);
@@ -80,6 +85,7 @@ namespace AdvancedPlanting
             _ghosts?.DestroyRoots();
             _overlay?.Destroy();
             Window?.Destroy();
+            _panel?.Destroy();
             Instance = null;
         }
 
@@ -168,14 +174,65 @@ namespace AdvancedPlanting
                 HidePreview();
                 return;
             }
+            Icons.UploadStep();
             Window.Update();
             HandleWheelKey();
+            HandleQuickKeys();
             if (!State.Enabled)
             {
                 HidePreview();
                 return;
             }
             UpdateAutoContinue();
+        }
+
+        /// <summary>Quick keys and the wheel key; only in build mode with a seed selected.</summary>
+        private void HandleQuickKeys()
+        {
+            if (!State.Enabled || global::Hud.InRadial() || Window.IsBlockingInput || global::Hud.IsPieceSelectionVisible()) return;
+            if (!_player.TakeInput()) return;
+            if (Pressed(Settings.FinishKey.Value) && State.CanFinish)
+            {
+                State.Finish();
+                _player.Message(MessageHud.MessageType.Center, Loc.T("msg.ready", StatusPanel.ModeName(State.Mode)));
+            }
+            if (Pressed(Settings.FillKey.Value) && State.IsClosedPath)
+            {
+                State.SetFill(!State.Fill);
+                _player.Message(MessageHud.MessageType.Center, Loc.T(State.Fill ? "wheel.fill.on" : "wheel.fill.off"));
+            }
+            if (Pressed(Settings.ClearKey.Value) && !State.IsEmpty)
+            {
+                State.Clear();
+                _player.Message(MessageHud.MessageType.Center, Loc.T("msg.cleared"));
+            }
+        }
+
+        private static bool Pressed(KeyCode key) => key != KeyCode.None && ZInput.GetKeyDown(key);
+
+        /// <summary>
+        /// Called from the UpdatePlacement postfix. Returns true when the wheel changed the row
+        /// count, so the caller undoes vanilla's rotation step.
+        /// </summary>
+        public bool HandleMouseWheel(Player player)
+        {
+            if (!Settings.RowsOnMouseWheel.Value || player != _player || !FigureModeActive) return false;
+            if (Window.IsBlockingInput || global::Hud.InRadial() || global::Hud.IsPieceSelectionVisible()) return false;
+            float wheel = ZInput.GetMouseScrollWheel();
+            if (Mathf.Abs(wheel) < 0.001f) return false;
+            if (State.IsClosedPath && State.Fill) return true; // fill ignores rows; still no rotation
+
+            // One notch can arrive spread over several frames; step once per vanilla threshold,
+            // the same rule the game uses for rotating.
+            _scrollAccumulator += wheel;
+            float threshold = Mathf.Max(0.01f, player.m_scrollAmountThreshold);
+            if (Mathf.Abs(_scrollAccumulator) < threshold) return true;
+            int step = _scrollAccumulator > 0f ? 1 : -1;
+            _scrollAccumulator = 0f;
+            int before = State.Rows;
+            State.SetRows(State.Rows + step);
+            if (State.Rows != before) _player.Message(MessageHud.MessageType.TopLeft, Loc.T("msg.rows", State.Rows));
+            return true;
         }
 
         private void HandleWheelKey()
@@ -341,9 +398,14 @@ namespace AdvancedPlanting
         /// <summary>Geometry up to date and every slot checked: needed before planting.</summary>
         private void EnsureValidated()
         {
+            // A click validates in the UpdatePlacement prefix and again in TryPlacePiece; once a frame is enough.
+            if (_validatedFrame == Time.frameCount && !State.Dirty) return;
             if (State.Dirty || Layout.BuiltForPrefab != _prefabName) RebuildNow();
             Layout.ValidateAll(State, _piece, _plant, _player);
+            _validatedFrame = Time.frameCount;
         }
+
+        private int _validatedFrame = -1;
 
         /// <summary>
         /// Called by the UpdatePlacementGhost postfix, after vanilla moved its ghost. Keeps the
@@ -491,6 +553,33 @@ namespace AdvancedPlanting
             }
         }
 
+        /// <summary>Action and key pairs for the key-hint list, most relevant first.</summary>
+        public List<KeyValuePair<string, string>> CurrentHints()
+        {
+            var list = new List<KeyValuePair<string, string>>(6);
+            string click = GameText.Localize("$KEY_Attack");
+            list.Add(new KeyValuePair<string, string>(NextActionHint(), click));
+            string finish = FinishHint();
+            if (finish != null)
+            {
+                list.Add(new KeyValuePair<string, string>(finish, click));
+                if (Settings.FinishKey.Value != KeyCode.None)
+                    list.Add(new KeyValuePair<string, string>(Loc.T("hint.finish_key"), KeyName(Settings.FinishKey.Value)));
+            }
+            bool fill = State.IsClosedPath && State.Fill;
+            if (Settings.RowsOnMouseWheel.Value && !fill)
+                list.Add(new KeyValuePair<string, string>(Loc.T("hint.rows", State.Rows), Loc.T("hint.mouse_wheel")));
+            if (State.IsClosedPath && Settings.FillKey.Value != KeyCode.None)
+                list.Add(new KeyValuePair<string, string>(Loc.T("hint.fill_key", Loc.T(State.Fill ? "hint.on" : "hint.off")), KeyName(Settings.FillKey.Value)));
+            if (!State.IsEmpty && Settings.ClearKey.Value != KeyCode.None)
+                list.Add(new KeyValuePair<string, string>(Loc.T("hint.clear_key"), KeyName(Settings.ClearKey.Value)));
+            list.Add(new KeyValuePair<string, string>(Loc.T("hint.wheel"), WheelKeyName));
+            if (list.Count > 6) list.RemoveRange(6, list.Count - 6);
+            return list;
+        }
+
+        private static string KeyName(KeyCode key) => key == KeyCode.Backspace ? "Backspace" : key.ToString();
+
         /// <summary>Second hint while drawing: how to finish a curve or close a shape, or null.</summary>
         public string FinishHint()
         {
@@ -546,13 +635,13 @@ namespace AdvancedPlanting
 
         // ------------------------------------------------------------------ gui
 
-        private void OnGUI()
+        /// <summary>Status panel visibility, once per frame after everything else updated.</summary>
+        private void LateUpdate()
         {
-            if (!HasPlantContext) return;
-            if (Window.IsOpen || !State.Enabled) return;
-            if (global::Hud.InRadial()) return;
-            if (global::Hud.IsPieceSelectionVisible()) return;
-            _panel.Draw(this);
+            bool show = HasPlantContext && State.Enabled && !Window.IsOpen && !global::Hud.InRadial()
+                && !global::Hud.IsPieceSelectionVisible();
+            if (show) _panel.Show(this);
+            else _panel.Hide();
         }
     }
 }

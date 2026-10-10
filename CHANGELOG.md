@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- New settings window and status panel design: dark wood and bronze artwork drawn by the mod, the game's bold Averia font, high-contrast text, icon buttons for path types, custom sliders and checkboxes.
+- Figure hints now appear above the game's own key hints at the bottom right, in the same style.
+- Quick controls: mouse wheel changes the number of rows, Z finishes a curve or closes a shape, G toggles fill, Backspace clears the figure. All configurable.
+- No more stall the first time the planting menu opens: icons and window artwork are prepared on a background thread at start-up.
+- Wheel icons are slightly smaller; the fill icon is clearer.
+- Status panel, key hints and preview update less often internally, reducing per-frame work.
+- Fixes found while debugging: key hints no longer depend on the internal layout of the vanilla hint list (they did not show in 0.3.0); wheel icons are recreated if the game unloads them between worlds; a planting click no longer validates the whole figure twice; Thunderstore manifest is written without a byte order mark.
+- Author is kepqa; plugin GUID is now kepqa.AdvancedPlanting (config file kepqa.AdvancedPlanting.cfg).
+
 ## 0.3.0
 
 - Settings window rebuilt from the game's own UI (inventory panel background, buttons, toggles and sliders), so it matches Valheim and scales with the game's UI.

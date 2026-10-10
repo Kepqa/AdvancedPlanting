@@ -1,98 +1,89 @@
 # AdvancedPlanting
 
-Автор: kepqa. Версия 0.3.0.
+Plant along lines, arcs, circles, free curves and filled shapes instead of a fixed grid. Every figure becomes a set of curved parallel rows, with optional natural jitter and thinning so fields do not look ruler-straight. A live preview shows every plant before you spend a single seed.
 
-Мод для Valheim (BepInEx 5), который сажает растения вдоль произвольных кривых: отрезок, дуга, окружность, сплайн через любые точки и заливка замкнутого контура. Любая кривая превращается в изогнутую сетку из параллельных рядов. Есть регулируемая хаотичность разброса и прореживание, чтобы посадки выглядели естественно, а не как линейка.
+By **kepqa**. Client-side BepInEx plugin, works in single player and on servers without being installed on the server or by other players.
 
-Отличие от PlantEasily: фигура задаётся контрольными точками, зафиксированными в мире, а не прямоугольником вокруг курсора. Вы ставите точки, ходите вокруг, крутите параметры и видите все будущие растения призраками до того, как потратить хоть одно семя.
+## How it works
 
-## Управление
+Pick a seed or sapling with the cultivator. The mod starts in figure mode.
 
-У мода одна горячая клавиша: колесо посадки. Всё работает в режиме строительства с семенем или саженцем в руках.
+1. **Click** to place points. The cursor acts as the next point, so the figure, its rows and every future plant follow the mouse before you commit.
+2. **Finish** the figure. A line (2 points), arc (start, middle, end) and circle (centre, then edge) finish on their own. A curve finishes when you click its last point again, and a shape closes when you click its first point. The point that would finish the figure is highlighted in blue.
+3. **Click** again to plant.
 
-| Что сделать | Как |
+Every plant costs exactly what vanilla charges: seeds, stamina, tool durability, and it gives farming skill. When stamina or seeds run out, the nearest plants are planted and the rest of the figure stays. Rest and click again to finish it, or turn on **auto-continue**, which plants the rest one by one as stamina recovers.
+
+## Controls
+
+| Action | Default |
 |---|---|
-| Поставить точку | ЛКМ по земле |
-| Завершить кривую | ЛКМ по последней точке ещё раз |
-| Замкнуть контур | ЛКМ по первой точке |
-| Посадить готовую фигуру | ЛКМ |
-| Открыть колесо посадки | `B`, меняется в конфиге |
-| Закрыть окно настроек | `Esc` |
+| Place point, plant the finished figure | Left mouse button |
+| Finish a curve or close a shape | `Z`, or click its last or first point |
+| Number of rows | Mouse wheel |
+| Fill a circle or shape to the centre | `G` |
+| Clear the figure | `Backspace` |
+| Planting menu | `B` |
 
-Подсказки, что сделает следующий клик, показываются внизу справа вместе с ванильными подсказками строительства. Пока вы ставите точки, курсор служит следующей точкой. Фигура, ряды и будущие растения тянутся за мышью, поэтому форма видна до клика. Линия, дуга и окружность завершаются сами, когда поставлена последняя точка: у линии 2 точки, у дуги 3, у окружности центр и край. Точка, клик по которой завершит фигуру, подсвечивается голубым.
+The keys are free in build mode: the game does not use `B` or `Z`, and `G` (the radial menu key) does nothing while building. All keys can be changed or disabled in the config. The current actions are listed with the game's own key hints at the bottom right.
 
-**Колесо посадки** открывается на `B`, только пока выбрано семя. Повторное нажатие закрывает его, а удержание с отпусканием выбирает пункт под курсором, как у ванильного колеса. Ванильные клавиши колеса и эмоций работают как раньше. В колесе:
+## Planting menu
 
-- обычная посадка по одному растению, то есть выключение режима фигур;
-- тип пути: линия, дуга, окружность, кривая, заливка контура;
-- сторона дополнительных рядов, у замкнутых фигур это внутрь или наружу;
-- заливка окружности или контура до центра;
-- убрать последнюю точку, сбросить фигуру;
-- перемешать разброс;
-- окно настроек.
+A radial menu in the style of the emote wheel:
 
-**Окно настроек** собрано из элементов интерфейса самой игры и выглядит как её окна. Оно содержит ползунки шага, числа рядов, хаотичности и прореживания, а также автодосадку. Растения в мире обновляются сразу, пока двигается ползунок. Внизу окна посчитано, сколько семян и стамины нужно на фигуру.
+- ordinary single planting, which turns figure mode off;
+- path type: line, arc, circle, curve, shape;
+- side of the extra rows (both, left or right; inside or outside for closed shapes);
+- fill on or off;
+- undo point, clear figure;
+- reshuffle the random pattern;
+- settings window: path, fill, row side, spacing, rows, jitter, thinning, auto-continue, and the seed and stamina cost of the figure.
 
-**Предпросмотр.** Призрак растения стоит только там, где посадка возможна. Вокруг каждой точки на земле нарисовано кольцо радиуса роста: зелёное можно сажать, красное нельзя, причина видна на панели. Уже посаженные точки не показываются.
+## Preview
 
-**Посадка частями.** Большая фигура обычно стоит больше стамины, чем есть у персонажа. Мод сажает ближайшие к вам растения, пока хватает стамины и семян, а остальные остаются в фигуре. Отдохните и кликните снова, мод досадит оставшееся. С включённой в настройках автодосадкой мод сажает по одному растению, как только восстанавливается стамина. Каждое растение оплачивается как в ванили.
+- A ghost plant stands wherever planting is possible.
+- Each plant has a ring showing its grow radius: green can be planted, red cannot (the reason is shown in the status panel), grey is still being checked.
+- Plants never get closer than their grow radius plus a margin, so they never block each other's growth. Jitter only moves plants within that limit, so it shows once spacing is larger than the minimum.
+- Places where the plant would wither are refused even if vanilla allows planting: wrong biome, Ashlands heat, mountain cold.
+- A figure larger than `MaxFigureSize` (80 m by default) is shown as a red outline and is not laid out, so a stray click far away cannot freeze the game.
 
-**Предел размера.** Фигура больше `MaxFigureSize` (по умолчанию 80 м по длинной стороне, у окружности по диаметру) не рассчитывается: она рисуется красным контуром, а клик, который сделал бы её больше, не ставит точку. Это защищает от зависания при случайном клике далеко.
+## Configuration
 
-Шаг по умолчанию равен удвоенному радиусу роста растения. Минимальная дистанция между растениями (радиус роста плюс запас) соблюдается всегда, разброс никогда её не нарушает. Поэтому хаотичность становится заметной, только если увеличить шаг, окно подскажет это. Мод отказывается сажать и там, где ваниль разрешила бы, но растение засохнет: чужой биом, жара Ашленда, холод гор.
+`BepInEx/config/kepqa.AdvancedPlanting.cfg`, also editable with a config manager.
 
-Каждое растение стоит столько же, сколько в ванили: семена, стамина, прочность культиватора и опыт навыка.
+| Setting | Default | Meaning |
+|---|---|---|
+| PlantingWheel, FinishFigure, ToggleFill, ClearFigure | B, Z, G, Backspace | Keys; `None` disables one |
+| RowsOnMouseWheel | true | Mouse wheel changes rows in figure mode |
+| EnabledByDefault | true | Start in figure mode |
+| DefaultSpacingFactor | 2.0 | Initial spacing = grow radius × factor |
+| MinDistanceMargin | 0.35 | Minimum distance = grow radius + margin |
+| MaxPlants | 300 | Cap on plants per figure |
+| MaxFigureSize | 80 | Largest figure in metres |
+| RandomRotation | true | Random yaw for each plant |
+| AutoContinueInterval | 0.6 | Seconds between auto-continue plants |
+| ShowHud, ShowCurve, ShowGrowRadius | true | Status panel and preview overlays |
 
-## Перевод
+## Translations
 
-Все тексты мода берутся из файлов `Translations/<Язык>.txt` рядом с DLL в формате `ключ = значение`. Имя файла совпадает с названием языка в настройках игры: `English`, `Russian`, `German` и так далее. Английский и русский встроены в мод. Чтобы добавить язык, скопируйте `English.txt` под новым именем и переведите значения. Язык переключается вместе с языком игры.
+All texts come from `plugins/Translations/<Language>.txt` next to the DLL, in `key = value` lines. The file name is the language name from the game settings: `English`, `Russian`, `German`, and so on. English and Russian are included. To add a language, copy `English.txt`, rename it and translate the values; it is picked up with the game's language setting.
 
-## Сборка
+## Compatibility
 
-Нужны .NET SDK 8 и установленный Valheim с BepInEx 5. Игровые DLL берутся прямо из папки игры, в репозитории их нет.
+- Client-side only; other players and the server do not need it.
+- Do not combine with other mods that change how planting works (for example PlantEasily): both would handle the same click.
 
-1. Создайте `src/AdvancedPlanting/Local.props`:
-   ```xml
-   <Project>
-     <PropertyGroup>
-       <ValheimPath>D:\Steam\steamapps\common\Valheim</ValheimPath>
-       <CopyToGame>true</CopyToGame>
-     </PropertyGroup>
-   </Project>
-   ```
-   Вместо файла можно задать переменную окружения `VALHEIM_INSTALL`.
-2. `dotnet build src/AdvancedPlanting -c Release`
+## Building from source
 
-С `CopyToGame=true` обе DLL (`AdvancedPlanting.dll` и `AdvancedPlanting.Core.dll`) копируются в `BepInEx/plugins/AdvancedPlanting` после каждой сборки. Приватные члены игры открываются через `BepInEx.AssemblyPublicizer.MSBuild` во время сборки.
+Requires the .NET SDK and a Valheim install with BepInEx. Create `src/AdvancedPlanting/Local.props`:
 
-Пакет `BepInEx.AssemblyPublicizer.MSBuild` скачивается из NuGet сам. Для сборки нужны `assembly_valheim.dll`, `assembly_utils.dll`, `assembly_guiutils.dll`, `UnityEngine.UI.dll`, `Unity.TextMeshPro.dll` и Unity-модули из `valheim_Data/Managed`, а также `BepInEx.dll` с `0Harmony.dll` из `BepInEx/core`.
-
-Проверки без игры:
-
+```xml
+<Project>
+  <PropertyGroup>
+    <ValheimPath>D:\Steam\steamapps\common\Valheim</ValheimPath>
+    <CopyToGame>true</CopyToGame>
+  </PropertyGroup>
+</Project>
 ```
-dotnet test tests/AdvancedPlanting.Core.Tests        # геометрия
-dotnet run --project tools/LayoutPreview -- out      # SVG-превью раскладок
-```
 
-## Как устроено
-
-- `src/AdvancedPlanting.Core` — чистая геометрия без зависимостей от Unity: кривые, эквидистанты рядов с обрезкой на вогнутой стороне, детерминированный шум, фильтр минимальной дистанции. Покрыта тестами.
-- `src/AdvancedPlanting` — плагин: конфиг, состояние фигуры, проверка точек по правилам игры, пул призраков, оверлей с кривыми и кольцами, панель, колесо и окно настроек, патчи Harmony.
-- Патчи посадки: `Player.UpdatePlacementGhost` (превью), `Player.UpdatePlacement` (клик ставит точку, пока фигура не готова), `Player.TryPlacePiece` (посадка всей фигуры).
-- Патчи интерфейса: `RadialBase.InRadialBlockingPlaceMode` и `OpenRadialConfig.InitRadialConfig` (колесо посадки на ванильной клавише), `Hud.IsPieceSelectionVisible`, `Player.TakeInput`, `PlayerController.TakeInput`, `GameCamera.UpdateMouseCapture` (окно настроек ведёт себя как меню построек).
-
-Колесо собрано так же, как ванильное колесо эмоций: из копий того же элемента, со своими подписями, иконками и действиями. Иконки рисуются кодом, картинок в моде нет.
-
-Клик в игре вызывает `TryPlacePiece`, и при успехе ваниль один раз списывает семена, стамину, прочность и даёт опыт. Мод подменяет `TryPlacePiece`: сажает все точки через ванильный `PlacePiece`, за первое растение платит ваниль, за остальные мод по тем же формулам. Сервер и другие игроки видят растения без специальной синхронизации, мод нужен только тому, кто сажает.
-
-Призраки клонируются с ванильного призрака под неактивным родителем, и из клонов вырезаются все скрипты. Поэтому они не создают сетевых объектов и не попадают в списки построек игры.
-
-## Статус
-
-Версия 0.2.0 собирается против `assembly_valheim.dll` текущей версии игры, все новые точки входа сверены с декомпиляцией. В игре ещё не запускалась. Больше всего риска в колесе: оно опирается на внутренний интерфейс игры. Если колесо не откроется, остальное работает, но окно настроек тогда недоступно. В таком случае пришлите `BepInEx/LogOutput.log`.
-
----
-
-## English
-
-AdvancedPlanting by kepqa. Valheim mod (BepInEx 5) that plants along lines, arcs, circles, free curves and filled shapes, with parallel rows, natural jitter and thinning. No hotkeys of its own: with a seed selected, left click places points (the cursor previews the next point), clicking the last point finishes a curve, clicking the first closes a shape, and the next click plants. The vanilla radial key (G) opens a planting wheel with path types, row side, undo, clear, reshuffle and a settings window with sliders. Large figures can be planted over several clicks as stamina recovers, or automatically with auto-continue; every plant is paid for exactly like vanilla. Build: create `Local.props` with your `ValheimPath`, then `dotnet build src/AdvancedPlanting -c Release`.
+Then `dotnet build src/AdvancedPlanting -c Release`. A Release build also writes the Thunderstore package to `dist/`. Geometry tests: `dotnet test tests/AdvancedPlanting.Core.Tests`.

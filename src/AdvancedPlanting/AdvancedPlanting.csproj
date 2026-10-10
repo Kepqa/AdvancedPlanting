@@ -25,7 +25,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>AdvancedPlanting</AssemblyName>
     <RootNamespace>AdvancedPlanting</RootNamespace>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>kepqa</Authors>
     <Company>kepqa</Company>
     <Copyright>Copyright (c) 2026 kepqa</Copyright>
@@ -103,6 +103,47 @@
   <ItemGroup>
     <ProjectReference Include="../AdvancedPlanting.Core/AdvancedPlanting.Core.csproj" />
   </ItemGroup>
+
+  <!--
+    Thunderstore package, built with every Release build:
+      dist/kepqa-AdvancedPlanting-<version>.zip
+        manifest.json  (generated from the properties below)
+        icon.png, README.md, CHANGELOG.md
+        plugins/AdvancedPlanting.dll, plugins/AdvancedPlanting.Core.dll
+        plugins/Translations/*.txt
+    Upload it at thunderstore.io under the team "kepqa".
+  -->
+  <PropertyGroup>
+    <ThunderstoreName>AdvancedPlanting</ThunderstoreName>
+    <ThunderstoreDescription>Plant along lines, arcs, circles, curves and filled shapes, with rows, natural jitter and a live preview. Every plant costs what vanilla charges.</ThunderstoreDescription>
+    <ThunderstoreWebsite></ThunderstoreWebsite>
+    <ThunderstoreDependency>denikson-BepInExPack_Valheim-5.4.2202</ThunderstoreDependency>
+    <RepoRoot>$(MSBuildThisFileDirectory)../../</RepoRoot>
+    <PackageStaging>$(RepoRoot)dist/package/</PackageStaging>
+    <PackageZip>$(RepoRoot)dist/kepqa-$(ThunderstoreName)-$(Version).zip</PackageZip>
+  </PropertyGroup>
+
+  <Target Name="ThunderstorePackage" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <PackageTranslations Include="$(OutDir)Translations/*.txt" />
+      <ManifestLines Include="{" />
+      <ManifestLines Include="  &quot;name&quot;: &quot;$(ThunderstoreName)&quot;," />
+      <ManifestLines Include="  &quot;version_number&quot;: &quot;$(Version)&quot;," />
+      <ManifestLines Include="  &quot;website_url&quot;: &quot;$(ThunderstoreWebsite)&quot;," />
+      <ManifestLines Include="  &quot;description&quot;: &quot;$(ThunderstoreDescription)&quot;," />
+      <ManifestLines Include="  &quot;dependencies&quot;: [ &quot;$(ThunderstoreDependency)&quot; ]" />
+      <ManifestLines Include="}" />
+    </ItemGroup>
+    <RemoveDir Directories="$(PackageStaging)" />
+    <MakeDir Directories="$(PackageStaging)plugins/Translations" />
+    <WriteLinesToFile File="$(PackageStaging)manifest.json" Lines="@(ManifestLines)" Overwrite="true" Encoding="us-ascii" /><!-- Thunderstore rejects a UTF-8 BOM; the manifest is plain ASCII -->
+    <Copy SourceFiles="$(RepoRoot)thunderstore/icon.png;$(RepoRoot)README.md;$(RepoRoot)CHANGELOG.md" DestinationFolder="$(PackageStaging)" />
+    <Copy SourceFiles="$(OutDir)AdvancedPlanting.dll;$(OutDir)AdvancedPlanting.Core.dll" DestinationFolder="$(PackageStaging)plugins" />
+    <Copy SourceFiles="@(PackageTranslations)" DestinationFolder="$(PackageStaging)plugins/Translations" />
+    <Delete Files="$(PackageZip)" />
+    <ZipDirectory SourceDirectory="$(PackageStaging)" DestinationFile="$(PackageZip)" />
+    <Message Importance="high" Text="Thunderstore package: $(PackageZip)" />
+  </Target>
 
   <Target Name="CopyToGameFolder" AfterTargets="Build" Condition="'$(CopyToGame)' == 'true'">
     <MakeDir Directories="$(PluginOutputPath)" />

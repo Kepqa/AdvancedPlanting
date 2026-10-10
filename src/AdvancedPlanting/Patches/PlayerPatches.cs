@@ -35,6 +35,7 @@ namespace AdvancedPlanting.Patches
 
     /// <summary>
     /// While a figure is being drawn, a left click adds a control point instead of planting.
+    /// In figure mode the mouse wheel changes the row count instead of rotating the ghost.
     /// The click is consumed by making vanilla believe the tool was just used, then the
     /// pending press is discarded so it cannot fire a frame later.
     /// </summary>
@@ -45,12 +46,14 @@ namespace AdvancedPlanting.Patches
         {
             public bool Consumed;
             public float LastToolUseTime;
+            public int PlaceRotation;
         }
 
         [HarmonyPrefix]
         private static void Prefix(Player __instance, bool takeInput, out ClickState __state)
         {
             __state = default;
+            __state.PlaceRotation = __instance.m_placeRotation;
             Plugin plugin = Plugin.Instance;
             if (plugin == null || !takeInput) return;
             if (!plugin.HandlePlacementClick(__instance)) return;
@@ -60,8 +63,12 @@ namespace AdvancedPlanting.Patches
         }
 
         [HarmonyPostfix]
-        private static void Postfix(Player __instance, ClickState __state)
+        private static void Postfix(Player __instance, bool takeInput, ClickState __state)
         {
+            Plugin plugin = Plugin.Instance;
+            // In figure mode the wheel changes rows; undo the rotation vanilla applied.
+            if (plugin != null && takeInput && plugin.HandleMouseWheel(__instance))
+                __instance.m_placeRotation = __state.PlaceRotation;
             if (!__state.Consumed) return;
             __instance.m_lastToolUseTime = __state.LastToolUseTime;
             __instance.m_placePressedTime = -9999f;

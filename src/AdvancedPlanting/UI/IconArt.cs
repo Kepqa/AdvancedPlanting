@@ -111,9 +111,8 @@ namespace AdvancedPlanting.UI
                 foreach (float t in new[] { 0.04f, 0.24f, 0.44f, 0.64f, 0.84f }) c.Disk(At(blob, t), PlantRadius * 0.9f);
                 return;
             }
-            // Filled: rows shrink towards the centre.
-            c.Polyline(BlobPts(128, 128, 54), PathWidth * 0.8f);
-            c.Disk(new P(128, 128), 13f);
+            // Filled: the inside of the outline is solid.
+            c.Polygon(BlobPts(128, 128, 62));
         }
 
         private static void DrawSide(Canvas c)
@@ -302,6 +301,29 @@ namespace AdvancedPlanting.UI
                 });
             }
 
+            /// <summary>Filled simple polygon (even-odd rule).</summary>
+            public void Polygon(List<P> pts)
+            {
+                float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+                foreach (P p in pts)
+                {
+                    x0 = Math.Min(x0, p.X); y0 = Math.Min(y0, p.Y);
+                    x1 = Math.Max(x1, p.X); y1 = Math.Max(y1, p.Y);
+                }
+                Prim(_shape, (x0, y0, x1, y1), (x, y) =>
+                {
+                    float d = float.MaxValue;
+                    bool inside = false;
+                    for (int i = 0, j = pts.Count - 1; i < pts.Count; j = i++)
+                    {
+                        P a = pts[j], b = pts[i];
+                        d = Math.Min(d, SegDist(x, y, a, b));
+                        if ((b.Y > y) != (a.Y > y) && x < (a.X - b.X) * (y - b.Y) / (a.Y - b.Y) + b.X) inside = !inside;
+                    }
+                    return inside ? -d : d;
+                });
+            }
+
             /// <summary>Filled triangle with slightly rounded corners.</summary>
             public void Triangle(P a, P b, P c)
             {
@@ -331,8 +353,19 @@ namespace AdvancedPlanting.UI
             private static (float, float, float, float) Bounds(P a, P b, float r) =>
                 (Math.Min(a.X, b.X) - r, Math.Min(a.Y, b.Y) - r, Math.Max(a.X, b.X) + r, Math.Max(a.Y, b.Y) + r);
 
-            private static void Prim(float[] field, (float x0, float y0, float x1, float y1) box, Func<float, float, float> sdf)
+            /// <summary>
+            /// Artwork is drawn on a 256 grid and shrunk around the centre by this factor, leaving
+            /// a margin so icons sit comfortably inside the wheel slots. Outline width is not scaled.
+            /// </summary>
+            private const float ArtScale = 0.8f;
+            private const float Centre = Size * 0.5f;
+
+            private static void Prim(float[] field, (float x0, float y0, float x1, float y1) artBox, Func<float, float, float> artSdf)
             {
+                (float x0, float y0, float x1, float y1) box = (Centre + (artBox.x0 - Centre) * ArtScale, Centre + (artBox.y0 - Centre) * ArtScale,
+                           Centre + (artBox.x1 - Centre) * ArtScale, Centre + (artBox.y1 - Centre) * ArtScale);
+                Func<float, float, float> sdf = (x, y) =>
+                    artSdf(Centre + (x - Centre) / ArtScale, Centre + (y - Centre) / ArtScale) * ArtScale;
                 int margin = (int)Outline + 3;
                 int x0 = Math.Max(0, (int)box.x0 - margin), y0 = Math.Max(0, (int)box.y0 - margin);
                 int x1 = Math.Min(Size - 1, (int)box.x1 + margin), y1 = Math.Min(Size - 1, (int)box.y1 + margin);

@@ -6,13 +6,18 @@ namespace AdvancedPlanting
     /// <summary>
     /// All user-facing settings. Written to BepInEx/config/kepqa.AdvancedPlanting.cfg.
     ///
-    /// The mod has one hotkey: the planting wheel. Left click draws and plants; everything else
-    /// is in the wheel or the settings window.
+    /// Left click draws and plants, the mouse wheel changes the row count, and a few keys that
+    /// the game does not use in build mode give quick access to the most common actions.
+    /// Everything else is in the planting wheel or the settings window.
     /// </summary>
     public sealed class ModConfig
     {
         // Keys
         public ConfigEntry<KeyCode> WheelKey;
+        public ConfigEntry<KeyCode> FinishKey;
+        public ConfigEntry<KeyCode> FillKey;
+        public ConfigEntry<KeyCode> ClearKey;
+        public ConfigEntry<bool> RowsOnMouseWheel;
 
         // Behaviour
         public ConfigEntry<bool> EnabledByDefault;
@@ -40,6 +45,14 @@ namespace AdvancedPlanting
         {
             WheelKey = file.Bind("0. Keys", "PlantingWheel", KeyCode.B,
                 "Opens the planting wheel while a seed is selected in build mode. Press again or hold and release to choose. B is unused by the game.");
+            FinishKey = file.Bind("0. Keys", "FinishFigure", KeyCode.Z,
+                "Finishes a curve or closes a shape (same as clicking its last or first point). None to disable.");
+            FillKey = file.Bind("0. Keys", "ToggleFill", KeyCode.G,
+                "Turns filling of circles and shapes on or off. The radial-menu key does nothing in build mode, so G is free there. None to disable.");
+            ClearKey = file.Bind("0. Keys", "ClearFigure", KeyCode.Backspace,
+                "Removes the whole figure. None to disable.");
+            RowsOnMouseWheel = file.Bind("0. Keys", "RowsOnMouseWheel", true,
+                "In figure mode the mouse wheel changes the number of rows instead of rotating (plants get a random rotation anyway).");
 
             const string behaviour = "1. Behaviour";
             EnabledByDefault = file.Bind(behaviour, "EnabledByDefault", true,

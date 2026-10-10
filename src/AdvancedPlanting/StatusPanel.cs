@@ -1,46 +1,71 @@
 using System.Text;
 using AdvancedPlanting.Core;
+using AdvancedPlanting.UI;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace AdvancedPlanting
 {
     /// <summary>
-    /// Small IMGUI status panel. Visible as soon as a seed is selected in figure mode, so the
-    /// player always sees what the next click will do.
+    /// Small status panel (top left) in the same style as the settings window: figure type,
+    /// plant counts, seeds and stamina. Visible while a seed is selected in figure mode.
     /// </summary>
     public sealed class StatusPanel
     {
         private readonly ModConfig _config;
-        private GUIStyle _boxStyle;
-        private GUIStyle _textStyle;
         private readonly StringBuilder _sb = new StringBuilder(512);
+        private RectTransform _root;
+        private TextMeshProUGUI _text;
+        private string _last;
+        private float _nextText;
+
+        /// <summary>The text is rebuilt ten times a second, not every frame.</summary>
+        private const float TextInterval = 0.1f;
 
         public StatusPanel(ModConfig config)
         {
             _config = config;
         }
 
-        public void Draw(Plugin plugin)
+        public void Hide()
         {
-            if (!_config.ShowHud.Value) return;
-            EnsureStyles();
+            if (_root != null && _root.gameObject.activeSelf) _root.gameObject.SetActive(false);
+        }
+
+        public void Destroy()
+        {
+            if (_root != null) Object.Destroy(_root.gameObject);
+            _root = null;
+        }
+
+        /// <summary>Called every frame while the panel should be visible.</summary>
+        public void Show(Plugin plugin)
+        {
+            if (!_config.ShowHud.Value)
+            {
+                Hide();
+                return;
+            }
+            if (_root != null && _root.gameObject.activeSelf && Time.unscaledTime < _nextText) return;
+            _nextText = Time.unscaledTime + TextInterval;
             FigureState state = plugin.State;
             LayoutService layout = plugin.Layout;
 
             _sb.Length = 0;
-            _sb.Append("<b>").Append(ModeName(state.Mode)).Append("</b>  ·  ").Append(plugin.PlantDisplayName).Append('\n');
+            _sb.Append("<color=#FFC97A><b>").Append(ModeName(state.Mode)).Append("</b></color>  <color=#C9B48F>").Append(plugin.PlantDisplayName).Append("</color>\n");
 
             if (layout.TooLarge)
             {
-                _sb.Append("<color=#ff8080>").Append(plugin.TooLargeText(layout.Extent)).Append("</color>\n");
+                _sb.Append("<color=#FF8C78>").Append(plugin.TooLargeText(layout.Extent)).Append("</color>\n");
             }
             else if (layout.Slots.Count > 0)
             {
-                _sb.Append("<color=#90ee90>").Append(Loc.T("panel.to_plant", layout.ValidCount)).Append("</color>");
-                if (layout.PlantedCount > 0) _sb.Append("   <color=#c8c8c8>").Append(Loc.T("panel.planted", layout.PlantedCount)).Append("</color>");
+                _sb.Append("<color=#96DC8C>").Append(Loc.T("panel.to_plant", layout.ValidCount)).Append("</color>");
+                if (layout.PlantedCount > 0) _sb.Append("   <color=#C9B48F>").Append(Loc.T("panel.planted", layout.PlantedCount)).Append("</color>");
                 if (layout.BlockedCount > 0)
-                    _sb.Append("   <color=#ff8080>").Append(Loc.T("panel.blocked", layout.BlockedCount, PlacementValidator.Describe(layout.TopBlockReason))).Append("</color>");
-                if (layout.Truncated) _sb.Append("   <color=#ffd080>").Append(Loc.T("panel.cap", _config.MaxPlants.Value)).Append("</color>");
+                    _sb.Append("   <color=#FF8C78>").Append(Loc.T("panel.blocked", layout.BlockedCount, PlacementValidator.Describe(layout.TopBlockReason))).Append("</color>");
+                if (layout.Truncated) _sb.Append("   <color=#FFC97A>").Append(Loc.T("panel.cap", _config.MaxPlants.Value)).Append("</color>");
                 _sb.Append('\n');
                 _sb.Append(plugin.ResourceLine()).Append('\n');
             }
@@ -48,32 +73,43 @@ namespace AdvancedPlanting
             if (!plugin.KeyHintsShowing)
             {
                 // Fallback when the game's key hints are turned off in its settings.
-                _sb.Append("<color=#ffe08a>").Append(plugin.NextActionHint()).Append("</color>\n");
-                string finish = plugin.FinishHint();
-                if (finish != null) _sb.Append("<color=#ffe08a>").Append(finish).Append("</color>\n");
-                _sb.Append("<size=11><color=#a0a0a0>[").Append(plugin.WheelKeyName).Append("] ").Append(Loc.T("hint.wheel")).Append("</color></size>\n");
+                foreach (var hint in plugin.CurrentHints())
+                    _sb.Append(hint.Key).Append("  <color=#FFC97A>").Append(hint.Value).Append("</color>\n");
             }
-            if (state.AutoContinue) _sb.Append("<color=#a0d0ff>").Append(Loc.T("panel.auto")).Append("</color>");
+            if (state.AutoContinue) _sb.Append("<color=#9CC8E8>").Append(Loc.T("panel.auto")).Append("</color>");
             if (_sb.Length > 0 && _sb[_sb.Length - 1] == '\n') _sb.Length--;
 
-            if (_sb.Length == 0) return;
-            var content = new GUIContent(_sb.ToString());
-            Vector2 size = _textStyle.CalcSize(content);
-            var rect = new Rect(_config.HudX.Value, _config.HudY.Value, size.x + 20f, size.y + 16f);
-            GUI.Box(rect, GUIContent.none, _boxStyle);
-            GUI.Label(new Rect(rect.x + 10f, rect.y + 8f, size.x, size.y), content, _textStyle);
+            if (_sb.Length == 0 || !EnsureBuilt())
+            {
+                Hide();
+                return;
+            }
+            string text = _sb.ToString();
+            if (text != _last)
+            {
+                _last = text;
+                _text.text = text;
+            }
+            _root.anchoredPosition = new Vector2(_config.HudX.Value, -_config.HudY.Value);
+            if (!_root.gameObject.activeSelf) _root.gameObject.SetActive(true);
         }
 
-        private void EnsureStyles()
+        private bool EnsureBuilt()
         {
-            if (_boxStyle != null) return;
-            _boxStyle = new GUIStyle(GUI.skin.box);
-            var tex = new Texture2D(1, 1);
-            tex.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.6f));
-            tex.Apply();
-            _boxStyle.normal.background = tex;
-            _textStyle = new GUIStyle(GUI.skin.label) { richText = true, fontSize = 14, wordWrap = false };
-            _textStyle.normal.textColor = Color.white;
+            if (_root != null) return true;
+            Canvas canvas = global::Hud.instance != null ? global::Hud.instance.GetComponentInParent<Canvas>() : null;
+            if (canvas == null) return false;
+            UnityEngine.UI.Image bg = UiKit.Image(canvas.rootCanvas.transform, "inset", "AdvancedPlanting_Status");
+            _root = bg.rectTransform;
+            _root.anchorMin = _root.anchorMax = _root.pivot = new Vector2(0f, 1f);
+            bg.raycastTarget = false;
+            UiKit.Column(_root, 0f, new RectOffset(14, 14, 10, 10));
+            var fitter = _root.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _text = UiKit.Text(_root, 17f, UiKit.Cream, false, TextAlignmentOptions.TopLeft, false);
+            _text.lineSpacing = 6f;
+            return true;
         }
 
         public static string ModeName(PathMode mode)

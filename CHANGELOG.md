@@ -12,7 +12,7 @@
 
 ## 0.4.2
 
-- Shorter README and package description; credits: by kepqa, made with Claude Code.
+- Shorter README and package description.
 - Depends on BepInExPack_Valheim 5.4.2351.
 
 ## 0.4.1
@@ -28,7 +28,7 @@
 - Wheel icons are slightly smaller; the fill icon is clearer.
 - Status panel, key hints and preview update less often internally, reducing per-frame work.
 - Fixes found while debugging: key hints no longer depend on the internal layout of the vanilla hint list (they did not show in 0.3.0); wheel icons are recreated if the game unloads them between worlds; a planting click no longer validates the whole figure twice; Thunderstore manifest is written without a byte order mark.
-- Author is kepqa; plugin GUID is now kepqa.AdvancedPlanting (config file kepqa.AdvancedPlanting.cfg).
+- Plugin GUID is now kepqa.AdvancedPlanting (config file kepqa.AdvancedPlanting.cfg).
 
 ## 0.3.0
 
@@ -59,7 +59,6 @@
 - Optional auto-continue: plants the rest one by one as stamina recovers, paying for each plant.
 - Clearer preview: ghosts only where planting is possible, grow-radius rings coloured by status, planted spots hidden.
 - Alt + mouse wheel parameter editing removed.
-- Author set to kepqa.
 
 ## 0.1.0
 

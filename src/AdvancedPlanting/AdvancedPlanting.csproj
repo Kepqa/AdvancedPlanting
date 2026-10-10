@@ -117,7 +117,7 @@
   -->
   <PropertyGroup>
     <ThunderstoreName>AdvancedPlanting</ThunderstoreName>
-    <ThunderstoreDescription>Plant along lines, arcs, circles, curves and filled shapes. Rows, jitter, live preview, vanilla costs. By kepqa, made with Claude Code.</ThunderstoreDescription>
+    <ThunderstoreDescription>Plant along lines, arcs, circles, curves and filled shapes. Rows, jitter, live preview, vanilla costs.</ThunderstoreDescription>
     <ThunderstoreWebsite></ThunderstoreWebsite>
     <ThunderstoreDependency>denikson-BepInExPack_Valheim-5.4.2351</ThunderstoreDependency>
     <RepoRoot>$(MSBuildThisFileDirectory)../../</RepoRoot>
@@ -135,7 +135,7 @@
     <ReadmeImage Include="images/preview-6-settings-wheel.jpg" Url="https://i.postimg.cc/mgyPGrpB/preview-6-settings-wheel.jpg" />
   </ItemGroup>
 
-  <!-- Copies README.md with each local image path swapped for its hosted URL. -->
+  <!-- Copies README.md without repo-only blocks and with each local image path swapped for its hosted URL. -->
   <UsingTask TaskName="PackageReadme" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <Source Required="true" />
@@ -145,6 +145,8 @@
     <Task>
       <Code Type="Fragment" Language="cs"><![CDATA[
         string text = System.IO.File.ReadAllText(Source);
+        // Credits and other repository notes stay out of the mod page.
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"<!-- repo-only -->[\s\S]*?<!-- /repo-only -->\r?\n(\r?\n)?", "");
         foreach (var image in Images)
           text = text.Replace("](" + image.ItemSpec + ")", "](" + image.GetMetadata("Url") + ")");
         if (text.Contains("](images/"))

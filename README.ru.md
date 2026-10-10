@@ -2,7 +2,9 @@
 
 ![Version](https://img.shields.io/badge/version-0.4.4-ffcc00?style=for-the-badge&labelColor=555555) ![Valheim](https://img.shields.io/badge/valheim-1.0.17-f07c34?style=for-the-badge&labelColor=555555) ![Platform](https://img.shields.io/badge/platform-client-0a7bc2?style=for-the-badge&labelColor=555555) ![Languages](https://img.shields.io/badge/languages-EN%20%7C%20RU%20%7C%20UA%20%7C%20DE%20%7C%20FR%20%7C%20ES%20%7C%20PT%20%7C%20PL%20%7C%20ZH%20%7C%20JA-2ea44f?style=for-the-badge&labelColor=555555) [![Donate](https://img.shields.io/badge/boosty-donate-f15f2c?style=for-the-badge&logo=boosty&logoColor=white&labelColor=555555)](https://boosty.to/kepqa/donate)
 
+<!-- repo-only -->
 Сделано **kepqa** с помощью **Claude Code**.
+<!-- /repo-only -->
 
 Посадка вдоль линий, дуг, окружностей, кривых и залитых контуров.
 

@@ -4,7 +4,7 @@
 
 Посадка вдоль линий, дуг, окружностей, кривых и залитых контуров.
 
-![Посаженный многорядный круг](SCREENSHOT_1)
+![Посаженный многорядный круг](images/preview-1-planted-circle.jpg)
 
 ## Возможности
 
@@ -17,11 +17,11 @@
 - Только клиент.
 - Несовместим с другими модами на посадку.
 
-![Круг, 4 ряда, пустая середина](SCREENSHOT_2)
+![Круг, 4 ряда, пустая середина](images/preview-2-circle-hollow.jpg)
 
-![Кривая, 3 ряда](SCREENSHOT_3)
+![Кривая, 3 ряда](images/preview-3-curve.jpg)
 
-![Две вложенные кривые](SCREENSHOT_5)
+![Две вложенные кривые](images/preview-5-two-curves.jpg)
 
 ## Управление
 
@@ -36,9 +36,9 @@
 
 Клавиши настраиваются в `BepInEx/config/kepqa.AdvancedPlanting.cfg`.
 
-![Меню посадки](SCREENSHOT_6)
+![Меню посадки](images/preview-6-settings-wheel.jpg)
 
-![Окно настроек](SCREENSHOT_4)
+![Окно настроек](images/preview-4-settings-window.jpg)
 
 ## Перевод
 

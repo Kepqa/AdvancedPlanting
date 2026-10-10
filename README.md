@@ -4,7 +4,7 @@ Made by **kepqa** with **Claude Code**.
 
 Plant along lines, arcs, circles, curves and filled shapes.
 
-![A planted multi-row circle](SCREENSHOT_1)
+![A planted multi-row circle](images/preview-1-planted-circle.jpg)
 
 ## Features
 
@@ -17,11 +17,11 @@ Plant along lines, arcs, circles, curves and filled shapes.
 - Client-side only.
 - Incompatible with other planting mods.
 
-![Circle, 4 rows, hollow centre](SCREENSHOT_2)
+![Circle, 4 rows, hollow centre](images/preview-2-circle-hollow.jpg)
 
-![Curve, 3 rows](SCREENSHOT_3)
+![Curve, 3 rows](images/preview-3-curve.jpg)
 
-![Two nested curves](SCREENSHOT_5)
+![Two nested curves](images/preview-5-two-curves.jpg)
 
 ## Controls
 
@@ -36,9 +36,9 @@ Plant along lines, arcs, circles, curves and filled shapes.
 
 Keys are configurable in `BepInEx/config/kepqa.AdvancedPlanting.cfg`.
 
-![Planting menu](SCREENSHOT_6)
+![Planting menu](images/preview-6-settings-wheel.jpg)
 
-![Settings window](SCREENSHOT_4)
+![Settings window](images/preview-4-settings-window.jpg)
 
 ## Translations
 

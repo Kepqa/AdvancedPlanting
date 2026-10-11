@@ -1,0 +1,11 @@
+name: Idea
+description: A feature or a change you would like.
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea
+      description: What you want to do in the game, and how the mod could help.
+    validations:
+      required: true

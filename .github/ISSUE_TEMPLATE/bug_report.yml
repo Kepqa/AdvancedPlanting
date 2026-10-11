@@ -1,0 +1,41 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Mod version
+      description: Shown in r2modman, or in the first lines of the log.
+      placeholder: 0.4.6
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Single player
+        - Multiplayer, mod on the server too
+        - Multiplayer, mod only on my client
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Attach `BepInEx/LogOutput.log` from the game or r2modman profile folder (drag the file here).
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: Optional. The list from r2modman, or the files in `BepInEx/plugins`.

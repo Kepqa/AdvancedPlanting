@@ -118,7 +118,7 @@
   <PropertyGroup>
     <ThunderstoreName>AdvancedPlanting</ThunderstoreName>
     <ThunderstoreDescription>Plant along lines, arcs, circles, curves and filled shapes. Rows, jitter, live preview, vanilla costs.</ThunderstoreDescription>
-    <ThunderstoreWebsite></ThunderstoreWebsite>
+    <ThunderstoreWebsite>https://github.com/Kepqa/AdvancedPlanting</ThunderstoreWebsite>
     <ThunderstoreDependency>denikson-BepInExPack_Valheim-5.4.2351</ThunderstoreDependency>
     <RepoRoot>$(MSBuildThisFileDirectory)../../</RepoRoot>
     <PackageStaging>$(RepoRoot)dist/package/</PackageStaging>

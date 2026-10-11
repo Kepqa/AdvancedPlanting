@@ -25,7 +25,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>AdvancedPlanting</AssemblyName>
     <RootNamespace>AdvancedPlanting</RootNamespace>
-    <Version>0.4.6</Version>
+    <Version>0.4.7</Version>
     <Authors>kepqa</Authors>
     <Company>kepqa</Company>
     <Copyright>Copyright (c) 2026 kepqa</Copyright>

@@ -16,7 +16,7 @@ namespace AdvancedPlanting
     {
         public const string PluginGuid = "kepqa.AdvancedPlanting";
         public const string PluginName = "AdvancedPlanting";
-        public const string PluginVersion = "0.4.6";
+        public const string PluginVersion = "0.4.7";
         public const string PluginAuthor = "kepqa";
 
         public static Plugin Instance { get; private set; }

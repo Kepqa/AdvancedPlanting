@@ -1,7 +1,7 @@
 {
   "name": "AdvancedPlanting",
-  "version_number": "0.4.4",
+  "version_number": "0.4.7",
   "website_url": "",
   "description": "Moved to kepqa-AdvancedPlanting. This package is empty and installs the new one.",
-  "dependencies": [ "kepqa-AdvancedPlanting-0.4.3" ]
+  "dependencies": [ "kepqa-AdvancedPlanting-0.4.7" ]
 }

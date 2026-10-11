@@ -6,21 +6,28 @@
 Made by **kepqa** with **Claude Code**.
 <!-- /repo-only -->
 
-Plant along lines, arcs, circles, curves and filled shapes.
+Plant a whole bed in one click: rows along lines, arcs, circles, free curves and closed shapes, with a live preview. Harvest it all back with `Shift` + `E`.
 
 ![A planted multi-row circle](images/preview-1-planted-circle.jpg)
 
-## Features
+## Quick start
 
-- Five path types: line, arc, circle, curve, shape.
-- Parallel rows, fill to the centre for closed shapes.
-- Jitter and thinning for a natural look.
-- Live preview: ghosts and grow-radius rings before planting.
-- Vanilla costs: seeds, durability, skill; stamina at half the vanilla cost by default.
-- Partial planting when stamina runs out; optional auto-continue.
-- Area harvest: Shift + E picks every ripe crop of the same kind within 5 m.
-- Works client-side; install on the server too to enforce its settings for all players.
-- Incompatible with other planting mods.
+1. Equip the **Cultivator** and pick a seed. Figure mode is on by default.
+2. **Click** to place points. The preview follows the cursor: ghosts where plants go, rings for their grow radius.
+3. Line, arc and circle finish by themselves. A curve or shape finishes when you click its last or first point again, or press `Z`.
+4. **Mouse wheel** adds or removes rows. `G` fills a circle or shape to the centre.
+5. **Click** once more: the whole figure is planted.
+6. When it is ripe: hold `Shift` and press `E` on one crop, and every ripe crop of that kind within 5 m is picked.
+
+## Shapes
+
+| Shape | Clicks | Finishes |
+|---|---|---|
+| Line | start, end | by itself |
+| Arc | start, middle, end | by itself |
+| Circle | centre, edge | by itself |
+| Curve | any number of points | click the last point again, or `Z` |
+| Shape | 3 or more points | click the first point, or `Z` |
 
 ![Circle, 4 rows, hollow centre](images/preview-2-circle-hollow.jpg)
 
@@ -30,32 +37,57 @@ Plant along lines, arcs, circles, curves and filled shapes.
 
 ## Controls
 
-| Action | Key |
+Cultivator in hand, seed selected:
+
+| Key | Action |
 |---|---|
-| Place point / plant | LMB |
-| Finish curve / close shape | `Z` or click last / first point |
-| Rows | Mouse wheel |
-| Fill on/off | `G` |
-| Clear figure | `Backspace` |
-| Move figure under cursor / repeat last figure | `Y` |
-| Harvest all ripe crops of that kind nearby | `Shift` + `E` on a crop |
-| Planting menu | `B` |
+| `LMB` | Place a point / plant the figure |
+| `Mouse wheel` | Rows: more / fewer |
+| `Z` | Finish a curve, close a shape |
+| `G` | Fill a circle or shape: on / off |
+| `Y` | Move the figure under the cursor / repeat the last figure |
+| `Backspace` | Clear the figure |
+| `B` | Planting menu: shape, side of extra rows, fill, undo point, settings |
 
-## Settings
+Anywhere:
 
-Edit `BepInEx/config/kepqa.AdvancedPlanting.cfg`:
-- `MaxPlants`: plants per figure, default 500.
-- `StaminaCostFactor`: stamina per plant in figure mode, default 0.5 (half of vanilla, 1 = vanilla, 0 = free).
-- `[3. Harvest]`: `Enabled`, `Modifier` (LeftShift), `Radius` (5 m), `SameTypeOnly`, `ShowHint`.
-- `EnforceOnClients` (server): players use the server's `StaminaCostFactor`, `MaxPlants`, `MaxFigureSize` and harvest `Enabled` / `Radius`, default on.
-- Keys and display options.
+| Key | Action |
+|---|---|
+| `Shift` + `E` on a ripe crop | Pick every ripe crop of that kind within 5 m |
+
+The keys for the current step are shown in game, bottom right.
 
 ![Planting menu](images/preview-6-settings-wheel.jpg)
 
 ![Settings window](images/preview-4-settings-window.jpg)
 
+## Costs
+
+- Every plant costs seeds, tool durability and gives skill, as in vanilla.
+- Stamina per plant is half the vanilla cost.
+- Short of stamina or seeds: the nearest plants go in first, the rest stay in the preview. Click again later, or turn on auto-continue in the settings window.
+
+## Settings
+
+File: `BepInEx/config/kepqa.AdvancedPlanting.cfg`. All keys above can be changed there too.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `MaxPlants` | 500 | Plants per figure |
+| `MaxFigureSize` | 80 m | Largest figure |
+| `StaminaCostFactor` | 0.5 | Stamina per plant: 1 = vanilla, 0 = free |
+| `[3. Harvest] Enabled` | on | Area harvest on / off |
+| `[3. Harvest] Modifier` | LeftShift | Key to hold while picking |
+| `[3. Harvest] Radius` | 5 m | Area around the picked crop |
+| `[3. Harvest] SameTypeOnly` | on | Off also picks berries, mushrooms, flint and other pickables |
+| `[4. Server] EnforceOnClients` | on | On a server: players use its stamina, size and harvest settings |
+
+## Multiplayer
+
+- Works client-side. Installing it on the server is optional and makes the server's settings apply to every player.
+- Incompatible with other planting mods.
+
 ## Translations
 
-- Files: `Translations/<Language>.txt`, `key = value`.
-- Included: English, Russian, Ukrainian, German, French, Spanish, Portuguese (Brazil), Polish, Chinese (Simplified), Japanese.
-- New language: copy `English.txt`, rename to the game's language name.
+- English, Russian, Ukrainian, German, French, Spanish, Portuguese (Brazil), Polish, Chinese (Simplified), Japanese.
+- Files: `Translations/<Language>.txt`, `key = value`. New language: copy `English.txt` under the game's language name.
